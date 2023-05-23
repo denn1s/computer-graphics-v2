@@ -1,35 +1,24 @@
-# FRAMEBUFFERS
+Color struct: Represents a color with its RGB values. It has three properties: red, blue, and green.
 
-[wikipedia](https://en.wikipedia.org/wiki/Framebuffer)
+Renderer class: Encapsulates the rendering functionality. It holds the width and height of the rendering area and a framebuffer to store pixel data.
 
-A framebuffer is a portion of random-access memory (RAM) containing a bitmap that drives a video display. It is a memory buffer containing data representing all the pixels in a complete video frame. Modern video cards contain framebuffer circuitry in their cores. This circuitry converts an in-memory bitmap into a video signal that can be displayed on a computer monitor.
+V2 struct: Represents a 2D vertex with x and y integer coordinates.
 
-[before framebuffers](https://mitpress.mit.edu/9780262539760/racing-the-beam/)
+clear function: Clears the framebuffer with a specified color. It iterates through each pixel in the framebuffer and sets its color values to match the specified color.
 
-Before the introduction of framebuffers, computer graphics on systems like the Atari VCS (Video Computer System) were primarily handled using direct video signal manipulation and sprite-based graphics.
+point function: Draws a point (pixel) on the framebuffer at the given coordinates with the specified color.
 
-The Atari VCS, released in 1977, relied on a television as its display device. It used a technique known as "direct manipulation" to generate graphics on the screen. The console generated a composite video signal, which was composed of multiple components such as synchronization signals, luminance (black and white information), and chrominance (color information).
+line function: Draws a line on the framebuffer between two points using the Bresenham's line algorithm. It calculates the line's slope, determines the steps, and increments the coordinates to draw pixels along the line.
 
-Direct video signal manipulation was challenging to program for a few reasons:
+writeBMP function: Writes the framebuffer data to a BMP image file. It constructs the necessary BMP file headers and writes the pixel data to the file.
 
-- Low-level hardware control: Direct video signal manipulation required programmers to have a deep understanding of the hardware architecture and low-level programming techniques. They needed to work with specific memory-mapped registers, manipulate video signal timing, and handle synchronization signals accurately. This level of control demanded expertise and precise programming skills.
+render function: Performs the rendering process. It clears the framebuffer, draws a point at the center, and draws a line from the start to the end coordinates.
 
-- Lack of abstraction: The programming interface for manipulating the video signal was often low-level and lacked abstraction. Programmers had to directly interact with memory-mapped registers and manipulate individual bits or bytes to control various aspects of the video signal. This required a strong understanding of the hardware details, making it less intuitive and more error-prone.
-
-- Limited graphics capabilities: Systems like the Atari VCS had limited graphics capabilities, including low-resolution displays, limited color palettes, and a restricted number of sprites. Programmers had to work within these constraints and find creative solutions to achieve their desired graphical effects. This involved carefully managing the available resources and optimizing code for efficient graphics rendering.
-
-- Timing and synchronization challenges: Generating the video signal required precise timing and synchronization with the television display. Programmers had to carefully control the timing of various video signal components, such as horizontal and vertical sync signals, back porch, front porch, and active video area. Failure to synchronize properly could result in visual artifacts, flickering, or other display issues.
-
-- Lack of debugging tools: Debugging graphics-related issues was challenging due to the lack of advanced debugging tools and real-time visual feedback. Programmers often had to rely on trial and error, carefully inspecting the video output on a television screen and making iterative adjustments to the code to achieve the desired graphical results.
-
-Overall, direct video signal manipulation demanded a deep understanding of the hardware, precise timing control, and optimization skills. It required programmers to work at a low level and often involved a steep learning curve. The introduction of framebuffers and higher-level graphics APIs provided a more abstract and convenient programming interface, making graphics development more accessible and manageable.
-
-[framebuffer in c64]()
-
-```
-POKE 1024, 65
-```
+main function: The entry point of the program. It creates a Renderer object, calls the render function, and writes the resulting framebuffer to a BMP image file.
 
 
+-----
 
-can you create simple C++ code that creates a white BMP image sized 1900x1080 with a red point in the center? Don't use any external libraries
+static_cast: This is a safe and commonly used casting operator that performs compile-time type checking. It is used to convert one type to another when a valid conversion exists between the two types. It is typically used for implicit conversions, such as converting between numeric types or upcasting/downcasting in inheritance hierarchies. In the code, static_cast is used to convert pointers to unsigned char arrays to int pointers for the purpose of setting certain values in the BMP file headers. It is used to ensure type safety during these conversions.
+
+reinterpret_cast: This is a powerful casting operator that allows for low-level reinterpretation of data. It is used to convert one pointer type to another unrelated pointer type, or to convert a pointer to an integral type and vice versa. It is considered an unsafe cast because it bypasses some of the type checking done by the compiler. In the code, reinterpret_cast is used to convert pointers to unsigned char arrays to char arrays for writing data to the BMP file. It is used because the BMP file format expects data to be written as char arrays, and reinterpret_cast allows for this reinterpretation of pointer types.

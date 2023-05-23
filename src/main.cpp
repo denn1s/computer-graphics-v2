@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <glm/glm.hpp>
 
 // Struct representing RGB color values
@@ -71,10 +72,12 @@ void line(Renderer* renderer, const glm::ivec2& start, const glm::ivec2& end, co
 
     for (int i = 0; i <= steps; ++i)
     {
-        int pixelIndex = (static_cast<int>(y) * renderer->width + static_cast<int>(x)) * 3;
-        renderer->framebuffer[pixelIndex] = color.blue;
-        renderer->framebuffer[pixelIndex + 1] = color.green;
-        renderer->framebuffer[pixelIndex + 2] = color.red;
+        if (y >= 0 && x >= 0 && y < renderer->height && y < renderer->width) {
+            int pixelIndex = (static_cast<int>(y) * renderer->width + static_cast<int>(x)) * 3;    
+            renderer->framebuffer[pixelIndex] = color.blue;
+            renderer->framebuffer[pixelIndex + 1] = color.green;
+            renderer->framebuffer[pixelIndex + 2] = color.red;
+        }
 
         x += xIncrement;
         y += yIncrement;
@@ -121,22 +124,71 @@ void writeBMP(Renderer* renderer, const std::string& filename)
     file.close();
 }
 
-// Function to render the scene using the renderer
 void render(Renderer* renderer)
 {
     const Color whiteColor(255, 255, 255);
     const Color redColor(255, 0, 0);
-    const Color blueColor(0, 0, 255);
 
     clear(renderer, whiteColor);
 
-    glm::ivec2 center(renderer->width / 2, renderer->height / 2);
-    point(renderer, center, blueColor);
+    int squareSize = 100;  // Size of the square
 
-    glm::ivec2 start(100, 100);
-    glm::ivec2 end(250, 150);
-    line(renderer, start, end, redColor);
+    glm::ivec2 center(renderer->width / 2, renderer->height / 2);  // Center of the screen
+
+    // Calculate the coordinates of the four corners of the square
+    glm::ivec2 topLeft = center - glm::ivec2(squareSize / 2, squareSize / 2);
+    glm::ivec2 topRight = center + glm::ivec2(squareSize / 2, -squareSize / 2);
+    glm::ivec2 bottomLeft = center + glm::ivec2(-squareSize / 2, squareSize / 2);
+    glm::ivec2 bottomRight = center + glm::ivec2(squareSize / 2, squareSize / 2);
+
+    glm::mat3 translateToCenter = glm::mat3(
+        1, 0, -renderer->width / 2,
+        0, 1, -renderer->height / 2,
+        0, 0, 1
+    );
+
+    glm::mat3 scale = glm::mat3(
+        2, 0, 0,
+        0, 2, 0,
+        0, 0, 1
+    );
+
+    glm::mat3 translateBack = glm::mat3(
+        1, 0, renderer->width / 2,
+        0, 1, renderer->height / 2,
+        0, 0, 1
+    );
+
+    glm::mat3 transformMatrix = translateToCenter * scale * translateBack;
+
+    glm::ivec3 topLeftAugmented(topLeft.x, topLeft.y, 1);
+    glm::ivec3 topRightAugmented(topRight.x, topRight.y, 1);
+    glm::ivec3 bottomLeftAugmented(bottomLeft.x, bottomLeft.y, 1);
+    glm::ivec3 bottomRightAugmented(bottomRight.x, bottomRight.y, 1);
+
+
+    glm::ivec3 transformedTopLeft = topLeftAugmented * transformMatrix;
+    glm::ivec3 transformedTopRight = topRightAugmented * transformMatrix;
+    glm::ivec3 transformedBottomLeft = bottomLeftAugmented * transformMatrix;
+    glm::ivec3 transformedBottomRight = bottomRightAugmented * transformMatrix;
+
+    std::cout << "transformedTopLeft: ("
+        << transformedTopLeft.x << ", "
+        << transformedTopLeft.y << ", "
+        << transformedTopLeft.z << ")"
+    << std::endl;
+
+    topLeft = glm::ivec2(transformedTopLeft.x / transformedTopLeft.z, transformedTopLeft.y / transformedTopLeft.z);
+    topRight = glm::ivec2(transformedTopRight.x / transformedTopRight.z, transformedTopRight.y / transformedTopRight.z);
+    bottomLeft = glm::ivec2(transformedBottomLeft.x / transformedBottomLeft.z, transformedBottomLeft.y / transformedBottomLeft.z);
+    bottomRight = glm::ivec2(transformedBottomRight.x / transformedBottomRight.z, transformedBottomRight.y / transformedBottomRight.z);
+
+    line(renderer, topLeft, topRight, redColor);
+    line(renderer, topRight, bottomRight, redColor);
+    line(renderer, bottomRight, bottomLeft, redColor);
+    line(renderer, bottomLeft, topLeft, redColor);
 }
+
 
 int main()
 {

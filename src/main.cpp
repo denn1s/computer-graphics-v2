@@ -153,13 +153,19 @@ void render(Renderer* renderer)
         0, 0, 1
     );
 
+    glm::mat3 rotate = glm::mat3(
+        cos(glm::radians(45.0f)), -sin(glm::radians(45.0f)), 0.0f,
+        sin(glm::radians(45.0f)), cos(glm::radians(45.0f)), 0.0f,
+        0.0f, 0.0f, 1.0f
+    );
+
     glm::mat3 translateBack = glm::mat3(
         1, 0, renderer->width / 2,
         0, 1, renderer->height / 2,
         0, 0, 1
     );
 
-    glm::mat3 transformMatrix = translateToCenter * scale * translateBack;
+    glm::mat3 transformMatrix = translateToCenter * rotate * scale * translateBack;
 
     glm::ivec3 topLeftAugmented(topLeft.x, topLeft.y, 1);
     glm::ivec3 topRightAugmented(topRight.x, topRight.y, 1);
@@ -171,12 +177,6 @@ void render(Renderer* renderer)
     glm::ivec3 transformedTopRight = topRightAugmented * transformMatrix;
     glm::ivec3 transformedBottomLeft = bottomLeftAugmented * transformMatrix;
     glm::ivec3 transformedBottomRight = bottomRightAugmented * transformMatrix;
-
-    std::cout << "transformedTopLeft: ("
-        << transformedTopLeft.x << ", "
-        << transformedTopLeft.y << ", "
-        << transformedTopLeft.z << ")"
-    << std::endl;
 
     topLeft = glm::ivec2(transformedTopLeft.x / transformedTopLeft.z, transformedTopLeft.y / transformedTopLeft.z);
     topRight = glm::ivec2(transformedTopRight.x / transformedTopRight.z, transformedTopRight.y / transformedTopRight.z);

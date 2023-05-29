@@ -1,14 +1,18 @@
 cmake_minimum_required(VERSION 3.26)
 project(CG)
 
-# Set the path to your source file
-set(SOURCE_FILES src/main.cpp)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find the glm library
+# Find SDL2 and glm
+find_package(SDL2 REQUIRED)
 find_package(glm REQUIRED)
 
-# Add the executable
-add_executable(EXEC ${SOURCE_FILES})
+# Include the directories with headers
+include_directories(${SDL2_INCLUDE_DIRS})
 
-# Link against the glm library
-target_link_libraries(EXEC glm)
+# Add the executable
+add_executable(CG src/main.cpp)
+
+# Link against SDL2 and glm
+target_link_libraries(CG ${SDL2_LIBRARIES} glm)

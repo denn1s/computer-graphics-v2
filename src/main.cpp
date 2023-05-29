@@ -2,6 +2,8 @@
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <SDL2/SDL_opengl.h>
 #include "shaders.h"
@@ -185,6 +187,13 @@ int main() {
     };
     GLuint VAO = vertexSetup(vertices);
 
+    // Setup time related variables
+    Uint32 currentTime = SDL_GetTicks();
+    Uint32 lastTime = 0;
+    float deltaTime = 0.0f;
+
+    float rotateAngle = 0.0f;
+
     // Main loop
     bool running = true;
     while (running) {
@@ -195,10 +204,22 @@ int main() {
             }
             // Add other event handling here if needed...
         }
+        // Calculate delta time
+        lastTime = currentTime;
+        currentTime = SDL_GetTicks();
+        deltaTime = (currentTime - lastTime) / 1000.0f;
 
         // Clear the screen to black
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        rotateAngle += glm::radians(120.0f) * deltaTime;  // 120 deg per second
+        
+        glm::mat4 rotateMat = glm::rotate(glm::mat4(1.0f), rotateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+        std::cout << rotateAngle << std::endl;
+        // Pass the rotation matrix to the vertex shader
+        GLuint transformLoc = glGetUniformLocation(shaderProgram, "transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(rotateMat));
 
         // Draw your object
         glUseProgram(shaderProgram);
@@ -212,7 +233,7 @@ int main() {
 
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
-
+    glDeleteProgram(shaderProgram);
     SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();

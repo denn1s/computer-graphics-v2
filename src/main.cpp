@@ -1,207 +1,221 @@
 #include <iostream>
-#include <fstream>
-#include <algorithm>
+#include <SDL2/SDL.h>
+#include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <vector>
+#include <SDL2/SDL_opengl.h>
+#include "shaders.h"
 
-// Struct representing RGB color values
-struct Color
-{
-    unsigned char red;
-    unsigned char blue;
-    unsigned char green;
+bool init(SDL_Window*& window, SDL_GLContext& context) {
 
-    Color(unsigned char r, unsigned char b, unsigned char g)
-        : red(r), blue(b), green(g)
-    {
-    }
-};
-
-// Class representing a renderer with width, height, and framebuffer
-class Renderer
-{
-public:
-    int width;
-    int height;
-    unsigned char* framebuffer;
-
-    Renderer(int w, int h)
-        : width(w), height(h)
-    {
-        framebuffer = new unsigned char[width * height * 3];
+    // Initialize SDL's video subsystem.
+    // SDL_Init will return -1 if it fails to initialize.
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
+        return false;
     }
 
-    ~Renderer()
-    {
-        delete[] framebuffer;
-    }
-};
+    // Create an application window with the following settings:
+    window = SDL_CreateWindow(
+        "OpenGL",               // window title
+        SDL_WINDOWPOS_CENTERED, // initial x position
+        SDL_WINDOWPOS_CENTERED, // initial y position
+        800,                    // width, in pixels
+        600,                    // height, in pixels
+        SDL_WINDOW_OPENGL       // flags - set to use OpenGL
+    );
 
-// Function to clear the renderer's framebuffer with a specified color
-void clear(Renderer* renderer, const Color& color)
-{
-    for (int i = 0; i < renderer->width * renderer->height * 3; i += 3)
-    {
-        renderer->framebuffer[i] = color.blue;
-        renderer->framebuffer[i + 1] = color.green;
-        renderer->framebuffer[i + 2] = color.red;
+    // Check that the window was successfully created
+    if (window == NULL) {
+        // In the case that the window could not be made...
+        std::cerr << "Could not create window: " << SDL_GetError() << std::endl;
+        return false;
     }
+
+    // We want to request that SDL creates a OpenGL context for our window.
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); // Request OpenGL 3.3
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3); // Request OpenGL 3.3
+
+    // Create an OpenGL context associated with the window.
+    context = SDL_GL_CreateContext(window);
+
+    // Initialize GLEW. GLEW manages function pointers for OpenGL so we want to initialize it before
+    // calling any OpenGL functions. We are using the experimental flag to get access to more features.
+    glewExperimental = GL_TRUE;
+    GLenum err = glewInit();
+    if (err != GLEW_OK) {
+        std::cerr << "Failed to initialize GLEW: " << glewGetErrorString(err) << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
-// Function to draw a point on the renderer's framebuffer at a specified position with a specified color
-void point(Renderer* renderer, const glm::ivec2& point, const Color& color)
-{
-    int pixelIndex = (point.y * renderer->width + point.x) * 3;
-    renderer->framebuffer[pixelIndex] = color.blue;
-    renderer->framebuffer[pixelIndex + 1] = color.green;
-    renderer->framebuffer[pixelIndex + 2] = color.red;
+GLuint setupShaders(const char* vertexSource, const char* fragmentSource) {
+    // Create and compile the vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexSource, NULL);
+    glCompileShader(vertexShader);
+
+    // Check the vertex shader
+    GLint success;
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[512];
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
+    // Create and compile the fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+    glCompileShader(fragmentShader);
+
+    // Check the fragment shader
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[512];
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
+    // Link shaders
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    // Check the shader program
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[512];
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+
+    // Delete shaders as they're linked into our program now and no longer necessery
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return shaderProgram;
 }
 
-// Function to draw a line on the renderer's framebuffer from a start position to an end position with a specified color
-void line(Renderer* renderer, const glm::ivec2& start, const glm::ivec2& end, const Color& color)
-{
-    int dx = end.x - start.x;
-    int dy = end.y - start.y;
+// This function sets up the vertex data
+bool vertexSetup(GLuint &vertexArrayID, GLuint &vertexBuffer, const std::vector<glm::vec3>& vertices) {
+    // Create a vertex array object (VAO)
+    glGenVertexArrays(1, &vertexArrayID);
+    glBindVertexArray(vertexArrayID);
+    // A VAO stores all the links between the attributes and the VBOs with the raw vertex data
 
-    int steps = std::max(abs(dx), abs(dy));
+    // Generate 1 buffer, put the resulting identifier in vertexbuffer
+    glGenBuffers(1, &vertexBuffer);
+    // The following commands will talk about our 'vertexbuffer' buffer
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    // Give our vertices to OpenGL
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
 
-    float xIncrement = static_cast<float>(dx) / steps;
-    float yIncrement = static_cast<float>(dy) / steps;
+    return true;
+}
 
-    float x = static_cast<float>(start.x);
-    float y = static_cast<float>(start.y);
+// This function sets up the vertex data and creates a VAO and VBO
+GLuint vertexSetup(const std::vector<glm::vec3>& vertices) {
+    // Generate the Vertex Array Object (VAO) and the Vertex Buffer Object (VBO)
+    GLuint VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    
+    // Bind the Vertex Array Object
+    glBindVertexArray(VAO);
 
-    for (int i = 0; i <= steps; ++i)
-    {
-        if (y >= 0 && x >= 0 && y < renderer->height && y < renderer->width) {
-            int pixelIndex = (static_cast<int>(y) * renderer->width + static_cast<int>(x)) * 3;    
-            renderer->framebuffer[pixelIndex] = color.blue;
-            renderer->framebuffer[pixelIndex + 1] = color.green;
-            renderer->framebuffer[pixelIndex + 2] = color.red;
+    // Bind the Vertex Buffer
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    
+    // Send the vertex data to the Vertex Buffer
+    glBufferData(GL_ARRAY_BUFFER, // target: Specifies the target buffer object. The symbolic constant must be GL_ARRAY_BUFFER.
+             vertices.size() * sizeof(glm::vec3), // size: Specifies the size in bytes of the buffer object's new data store.
+             &vertices[0], // data: Specifies a pointer to the data that will be copied into the data store for initialization, or NULL if no data is to be copied.
+             GL_STATIC_DRAW); // usage: Specifies the expected usage pattern of the data store.
+
+    // Set the vertex attributes (only position here)
+    glVertexAttribPointer(0, // index: Specifies the index of the generic vertex attribute to be modified.
+                        3, // size: Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4.
+                        GL_FLOAT, // type: Specifies the data type of each component in the array.
+                        GL_FALSE, // normalized: Specifies whether fixed-point data values should be normalized (GL_TRUE) or converted directly as fixed-point values (GL_FALSE) when they are accessed.
+                        3 * sizeof(float), // stride: Specifies the byte offset between consecutive generic vertex attributes. If stride is 0, the generic vertex attributes are understood to be tightly packed in the array.
+                        (void*)0); // pointer: Specifies an offset of the first component of the first generic vertex attribute in the array. It's cast to void* here because the API requires this type.
+    glEnableVertexAttribArray(0);
+    
+    // Unbind the VAO (optional)
+    glBindVertexArray(0);
+
+    // Unbind the VBO and delete it
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glDeleteBuffers(1, &VBO);
+
+    // Return the VAO
+    return VAO;
+}
+
+int main() {
+
+    // The window we'll be rendering to
+    SDL_Window* window = nullptr;
+
+    // OpenGL context
+    SDL_GLContext context;
+
+    // Initialize SDL and OpenGL
+    if (!init(window, context)) {
+        std::cerr << "Failed to initialize!" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    // Setup shaders
+    GLuint shaderProgram = setupShaders(vertexShaderSource, fragmentShaderSource);
+    if (shaderProgram == 0) {
+        std::cerr << "Failed to set up the shader program." << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    // Setup vertex data
+    std::vector<glm::vec3> vertices = {
+        glm::vec3(-0.5f, -0.5f, 0.0f),
+        glm::vec3(0.5f, -0.5f, 0.0f),
+        glm::vec3(0.0f, 0.5f, 0.0f)
+    };
+    GLuint VAO = vertexSetup(vertices);
+
+    // Main loop
+    bool running = true;
+    while (running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = false;
+            }
+            // Add other event handling here if needed...
         }
 
-        x += xIncrement;
-        y += yIncrement;
+        // Clear the screen to black
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Draw your object
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        glBindVertexArray(0);
+
+        // Swap buffers
+        SDL_GL_SwapWindow(window);
     }
-}
 
-// Function to write the renderer's framebuffer to a BMP file
-void writeBMP(Renderer* renderer, const std::string& filename)
-{
-    std::ofstream file(filename, std::ios::binary);
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
 
-    unsigned char fileHeader[14] = {
-        'B', 'M',
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        54, 0, 0, 0
-    };
-
-    unsigned char infoHeader[40] = {
-        40, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        1, 0,
-        24, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0
-    };
-
-    int imageSize = renderer->width * renderer->height * 3;
-    int fileSize = imageSize + sizeof(fileHeader) + sizeof(infoHeader);
-
-    *(int*)&fileHeader[2] = fileSize;
-    *(int*)&fileHeader[10] = sizeof(fileHeader) + sizeof(infoHeader);
-    *(int*)&infoHeader[4] = renderer->width;
-    *(int*)&infoHeader[8] = renderer->height;
-    *(int*)&infoHeader[20] = imageSize;
-
-    file.write(reinterpret_cast<char*>(fileHeader), sizeof(fileHeader));
-    file.write(reinterpret_cast<char*>(infoHeader), sizeof(infoHeader));
-    file.write(reinterpret_cast<char*>(renderer->framebuffer), imageSize);
-
-    file.close();
-}
-
-void render(Renderer* renderer)
-{
-    const Color whiteColor(255, 255, 255);
-    const Color redColor(255, 0, 0);
-
-    clear(renderer, whiteColor);
-
-    int squareSize = 100;  // Size of the square
-
-    glm::ivec2 center(renderer->width / 2, renderer->height / 2);  // Center of the screen
-
-    // Calculate the coordinates of the four corners of the square
-    glm::ivec2 topLeft = center - glm::ivec2(squareSize / 2, squareSize / 2);
-    glm::ivec2 topRight = center + glm::ivec2(squareSize / 2, -squareSize / 2);
-    glm::ivec2 bottomLeft = center + glm::ivec2(-squareSize / 2, squareSize / 2);
-    glm::ivec2 bottomRight = center + glm::ivec2(squareSize / 2, squareSize / 2);
-
-    glm::mat3 translateToCenter = glm::mat3(
-        1, 0, -renderer->width / 2,
-        0, 1, -renderer->height / 2,
-        0, 0, 1
-    );
-
-    glm::mat3 scale = glm::mat3(
-        2, 0, 0,
-        0, 2, 0,
-        0, 0, 1
-    );
-
-    glm::mat3 rotate = glm::mat3(
-        cos(glm::radians(45.0f)), -sin(glm::radians(45.0f)), 0.0f,
-        sin(glm::radians(45.0f)), cos(glm::radians(45.0f)), 0.0f,
-        0.0f, 0.0f, 1.0f
-    );
-
-    glm::mat3 translateBack = glm::mat3(
-        1, 0, renderer->width / 2,
-        0, 1, renderer->height / 2,
-        0, 0, 1
-    );
-
-    glm::mat3 transformMatrix = translateToCenter * rotate * scale * translateBack;
-
-    glm::ivec3 topLeftAugmented(topLeft.x, topLeft.y, 1);
-    glm::ivec3 topRightAugmented(topRight.x, topRight.y, 1);
-    glm::ivec3 bottomLeftAugmented(bottomLeft.x, bottomLeft.y, 1);
-    glm::ivec3 bottomRightAugmented(bottomRight.x, bottomRight.y, 1);
-
-
-    glm::ivec3 transformedTopLeft = topLeftAugmented * transformMatrix;
-    glm::ivec3 transformedTopRight = topRightAugmented * transformMatrix;
-    glm::ivec3 transformedBottomLeft = bottomLeftAugmented * transformMatrix;
-    glm::ivec3 transformedBottomRight = bottomRightAugmented * transformMatrix;
-
-    topLeft = glm::ivec2(transformedTopLeft.x / transformedTopLeft.z, transformedTopLeft.y / transformedTopLeft.z);
-    topRight = glm::ivec2(transformedTopRight.x / transformedTopRight.z, transformedTopRight.y / transformedTopRight.z);
-    bottomLeft = glm::ivec2(transformedBottomLeft.x / transformedBottomLeft.z, transformedBottomLeft.y / transformedBottomLeft.z);
-    bottomRight = glm::ivec2(transformedBottomRight.x / transformedBottomRight.z, transformedBottomRight.y / transformedBottomRight.z);
-
-    line(renderer, topLeft, topRight, redColor);
-    line(renderer, topRight, bottomRight, redColor);
-    line(renderer, bottomRight, bottomLeft, redColor);
-    line(renderer, bottomLeft, topLeft, redColor);
-}
-
-
-int main()
-{
-    const int width = 800;
-    const int height = 600;
-
-    Renderer renderer(width, height);
-
-    render(&renderer);
-
-    writeBMP(&renderer, "image.bmp");
-
-    std::cout << "Image generated successfully!" << std::endl;
+    SDL_GL_DeleteContext(context);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 
     return 0;
 }

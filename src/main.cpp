@@ -102,23 +102,6 @@ GLuint setupShaders(const char* vertexSource, const char* fragmentSource) {
     return shaderProgram;
 }
 
-// This function sets up the vertex data
-bool vertexSetup(GLuint &vertexArrayID, GLuint &vertexBuffer, const std::vector<glm::vec3>& vertices) {
-    // Create a vertex array object (VAO)
-    glGenVertexArrays(1, &vertexArrayID);
-    glBindVertexArray(vertexArrayID);
-    // A VAO stores all the links between the attributes and the VBOs with the raw vertex data
-
-    // Generate 1 buffer, put the resulting identifier in vertexbuffer
-    glGenBuffers(1, &vertexBuffer);
-    // The following commands will talk about our 'vertexbuffer' buffer
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    // Give our vertices to OpenGL
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
-    return true;
-}
-
 // This function sets up the vertex data and creates a VAO and VBO
 GLuint vertexSetup(const std::vector<glm::vec3>& vertices) {
     // Generate the Vertex Array Object (VAO) and the Vertex Buffer Object (VBO)
@@ -216,7 +199,7 @@ int main() {
         rotateAngle += glm::radians(120.0f) * deltaTime;  // 120 deg per second
         
         glm::mat4 rotateMat = glm::rotate(glm::mat4(1.0f), rotateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-        std::cout << rotateAngle << std::endl;
+
         // Pass the rotation matrix to the vertex shader
         GLuint transformLoc = glGetUniformLocation(shaderProgram, "transform");
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(rotateMat));

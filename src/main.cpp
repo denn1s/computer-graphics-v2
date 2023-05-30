@@ -51,6 +51,8 @@ bool init(SDL_Window*& window, SDL_GLContext& context) {
         return false;
     }
 
+    glEnable(GL_DEPTH_TEST);
+
     return true;
 }
 
@@ -260,7 +262,7 @@ int main() {
 
         // Clear the screen to black
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 view = glm::lookAt(
             cameraPos, // Camera position is updated based on keyboard input
@@ -287,10 +289,14 @@ int main() {
         GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotateMat));
 
+        GLuint lightPositionLoc = glGetUniformLocation(shaderProgram, "lightPosition");
+        glm::vec3 lightPosition = glm::vec3(2.0f, 2.0f, 2.0f); // Position of the light source
+        glUniform3fv(lightPositionLoc, 1, glm::value_ptr(lightPosition));
+
         // Draw your object
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 

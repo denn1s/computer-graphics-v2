@@ -1,3 +1,4 @@
+#include <map>
 #include <iostream>
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
@@ -102,12 +103,13 @@ GLuint setupShaders(const char* vertexSource, const char* fragmentSource) {
     return shaderProgram;
 }
 
-// This function sets up the vertex data and creates a VAO and VBO
-GLuint vertexSetup(const std::vector<glm::vec3>& vertices) {
-    // Generate the Vertex Array Object (VAO) and the Vertex Buffer Object (VBO)
-    GLuint VAO, VBO;
+// This function sets up the vertex data and creates a VAO, VBO and EBO
+GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<GLuint>& indices) {
+    // Generate the Vertex Array Object (VAO), the Vertex Buffer Object (VBO) and the Element Buffer Object (EBO)
+    GLuint VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
     
     // Bind the Vertex Array Object
     glBindVertexArray(VAO);
@@ -116,29 +118,74 @@ GLuint vertexSetup(const std::vector<glm::vec3>& vertices) {
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     
     // Send the vertex data to the Vertex Buffer
-    glBufferData(GL_ARRAY_BUFFER, // target: Specifies the target buffer object. The symbolic constant must be GL_ARRAY_BUFFER.
-             vertices.size() * sizeof(glm::vec3), // size: Specifies the size in bytes of the buffer object's new data store.
-             &vertices[0], // data: Specifies a pointer to the data that will be copied into the data store for initialization, or NULL if no data is to be copied.
-             GL_STATIC_DRAW); // usage: Specifies the expected usage pattern of the data store.
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
 
+    // Bind the Element Buffer Object
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    
+    // Send the index data to the Element Buffer
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
+    
     // Set the vertex attributes (only position here)
-    glVertexAttribPointer(0, // index: Specifies the index of the generic vertex attribute to be modified.
-                        3, // size: Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4.
-                        GL_FLOAT, // type: Specifies the data type of each component in the array.
-                        GL_FALSE, // normalized: Specifies whether fixed-point data values should be normalized (GL_TRUE) or converted directly as fixed-point values (GL_FALSE) when they are accessed.
-                        3 * sizeof(float), // stride: Specifies the byte offset between consecutive generic vertex attributes. If stride is 0, the generic vertex attributes are understood to be tightly packed in the array.
-                        (void*)0); // pointer: Specifies an offset of the first component of the first generic vertex attribute in the array. It's cast to void* here because the API requires this type.
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     
     // Unbind the VAO (optional)
     glBindVertexArray(0);
 
-    // Unbind the VBO and delete it
+    // Unbind the VBO, EBO and delete them
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
 
     // Return the VAO
     return VAO;
+}
+
+void createEarthApproximation(std::vector<glm::vec3>& vertices, std::vector<GLuint>& indices) {
+    // Define the number of segments for latitude and longitude
+    int numLatSegments = 8;  // We'll have 8 latitudes
+    int numLongSegments = 6;  // We'll have 6 longitudes
+
+    // Calculate the angles for each segment
+    float latStep = M_PI / numLatSegments;
+    float longStep = 2.0f * M_PI / numLongSegments;
+
+    // Add the vertices
+    for(int i = 0; i <= numLatSegments; ++i){
+        for(int j = 0; j <= numLongSegments; ++j){
+            float theta = i * latStep;
+            float phi = j * longStep;
+
+            glm::vec3 vertex;
+            vertex.x = sinf(theta) * cosf(phi);
+            vertex.y = sinf(theta) * sinf(phi);
+            vertex.z = cosf(theta);
+
+            vertices.push_back(vertex);
+        }
+    }
+
+    // Add the indices
+    for(int i = 0; i < numLatSegments; ++i){
+        for(int j = 0; j < numLongSegments; ++j){
+            int first = i * (numLongSegments + 1) + j;
+            int second = first + numLongSegments + 1;
+
+            // First triangle
+            indices.push_back(first);
+            indices.push_back(second);
+            indices.push_back(first + 1);
+
+            // Second triangle - Ensure we are within the vertices array bounds.
+            if((second + 1) < vertices.size() && (first + 1) < vertices.size()){
+                indices.push_back(second);
+                indices.push_back(second + 1);
+                indices.push_back(first + 1);
+            }
+        }
+    }
 }
 
 int main() {
@@ -162,13 +209,21 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    std::vector<glm::vec3> vertices;
+    std::vector<GLuint> indices;
+    
     // Setup vertex data
-    std::vector<glm::vec3> vertices = {
+    /*
+    vertices = {
         glm::vec3(-0.5f, -0.5f, 0.0f),
         glm::vec3(0.5f, -0.5f, 0.0f),
         glm::vec3(0.0f, 0.5f, 0.0f)
     };
-    GLuint VAO = vertexSetup(vertices);
+    // Indices in counterclockwise order
+    indices = {0, 1, 2};
+    */
+    createEarthApproximation(vertices, indices);
+    GLuint VAO = vertexSetup(vertices, indices);
 
     // Setup time related variables
     Uint32 currentTime = SDL_GetTicks();
@@ -176,6 +231,8 @@ int main() {
     float deltaTime = 0.0f;
 
     float rotateAngle = 0.0f;
+
+    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 
     // Main loop
     bool running = true;
@@ -185,7 +242,16 @@ int main() {
             if (event.type == SDL_QUIT) {
                 running = false;
             }
-            // Add other event handling here if needed...
+            if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                    case SDLK_UP:
+                        cameraPos.z -= 1.0f; // move closer
+                        break;
+                    case SDLK_DOWN:
+                        cameraPos.z += 1.0f; // move away
+                        break;
+                }
+            }
         }
         // Calculate delta time
         lastTime = currentTime;
@@ -196,18 +262,36 @@ int main() {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        glm::mat4 view = glm::lookAt(
+            cameraPos, // Camera position is updated based on keyboard input
+            glm::vec3(0.0f, 0.0f, 0.0f), // and looks at the origin
+            glm::vec3(0.0f, 1.0f, 0.0f)  // Head is up (set to 0,-1,0 to look upside-down)
+        );
+
+        glm::mat4 projection = glm::perspective(
+            glm::radians(45.0f), // The field of view
+            800.0f / 600.0f, // Aspect Ratio
+            0.1f, // Near clipping plane
+            100.0f // Far clipping plane
+        );
+
         rotateAngle += glm::radians(120.0f) * deltaTime;  // 120 deg per second
-        
         glm::mat4 rotateMat = glm::rotate(glm::mat4(1.0f), rotateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-        // Pass the rotation matrix to the vertex shader
-        GLuint transformLoc = glGetUniformLocation(shaderProgram, "transform");
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(rotateMat));
+        GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+        GLuint projLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rotateMat));
 
         // Draw your object
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         // Swap buffers

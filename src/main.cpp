@@ -279,6 +279,7 @@ int main() {
 
         rotateAngle += glm::radians(120.0f) * deltaTime;  // 120 deg per second
         glm::mat4 rotateMat = glm::rotate(glm::mat4(1.0f), rotateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+        // glm::mat4 rotateMat = glm::mat4(1.0f);
 
         GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));

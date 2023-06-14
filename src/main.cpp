@@ -7,7 +7,9 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <SDL2/SDL_opengl.h>
+
 #include "shaders.h"
+#include "ObjLoader.h"
 
 bool init(SDL_Window*& window, SDL_GLContext& context) {
 
@@ -56,54 +58,51 @@ bool init(SDL_Window*& window, SDL_GLContext& context) {
     return true;
 }
 
-GLuint setupShaders(const char* vertexSource, const char* fragmentSource) {
-    // Create and compile the vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    glCompileShader(vertexShader);
+GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const std::vector<GLuint>& faces)
+{
+    GLuint VAO, VBO, NBO, EBO;
 
-    // Check the vertex shader
-    GLint success;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        GLchar infoLog[512];
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
+    // Generate and bind the vertex array object (VAO)
+    glGenVertexArrays(1, &VAO); // Generate VAO id
+    glBindVertexArray(VAO); // Bind it so upcoming GL calls will modify this VAO
 
-    // Create and compile the fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-    glCompileShader(fragmentShader);
+    // Generate and bind the vertex buffer object (VBO - vertices)
+    glGenBuffers(1, &VBO); // Generate VBO id
+    glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind it so we're modifying this VBO
+    // Fill the VBO with data:
+    // GL_ARRAY_BUFFER: Type of data
+    // vertices.size() * sizeof(glm::vec3): Size of data (bytes)
+    // &vertices[0]: Actual data
+    // GL_STATIC_DRAW: We're not going to change the vertex data
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
+    // Set the vertex attributes:
+    // 0: Attribute index (matches layout in shader)
+    // 3: Number of components per vertex attribute (x, y, and z)
+    // GL_FLOAT: Type of each component
+    // GL_FALSE: Don't normalize the data
+    // 0: stride, distance between consecutive vertex attribute sets (0 means tightly packed)
+    // (GLvoid*)0: Offset of where the position data begins in the buffer
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+    glEnableVertexAttribArray(0); // Enable the vertex attribute
 
-    // Check the fragment shader
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        GLchar infoLog[512];
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
+    // Generate and bind the normal buffer object (NBO - normals)
+    glGenBuffers(1, &NBO);
+    glBindBuffer(GL_ARRAY_BUFFER, NBO);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), &normals[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+    glEnableVertexAttribArray(1);
 
-    // Link shaders
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
+    // Generate and bind the element buffer object (EBO - faces)
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * sizeof(GLuint), &faces[0], GL_STATIC_DRAW);
 
-    // Check the shader program
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        GLchar infoLog[512];
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
+    // Unbind the VAO
+    glBindVertexArray(0);
 
-    // Delete shaders as they're linked into our program now and no longer necessery
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return shaderProgram;
+    return VAO; // Return the VAO id
 }
+
 
 // This function sets up the vertex data and creates a VAO, VBO and EBO
 GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<GLuint>& indices) {
@@ -145,51 +144,6 @@ GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<GLu
     return VAO;
 }
 
-void createEarthApproximation(std::vector<glm::vec3>& vertices, std::vector<GLuint>& indices) {
-    // Define the number of segments for latitude and longitude
-    int numLatSegments = 8;  // We'll have 8 latitudes
-    int numLongSegments = 6;  // We'll have 6 longitudes
-
-    // Calculate the angles for each segment
-    float latStep = M_PI / numLatSegments;
-    float longStep = 2.0f * M_PI / numLongSegments;
-
-    // Add the vertices
-    for(int i = 0; i <= numLatSegments; ++i){
-        for(int j = 0; j <= numLongSegments; ++j){
-            float theta = i * latStep;
-            float phi = j * longStep;
-
-            glm::vec3 vertex;
-            vertex.x = sinf(theta) * cosf(phi);
-            vertex.y = sinf(theta) * sinf(phi);
-            vertex.z = cosf(theta);
-
-            vertices.push_back(vertex);
-        }
-    }
-
-    // Add the indices
-    for(int i = 0; i < numLatSegments; ++i){
-        for(int j = 0; j < numLongSegments; ++j){
-            int first = i * (numLongSegments + 1) + j;
-            int second = first + numLongSegments + 1;
-
-            // First triangle
-            indices.push_back(first);
-            indices.push_back(second);
-            indices.push_back(first + 1);
-
-            // Second triangle - Ensure we are within the vertices array bounds.
-            if((second + 1) < vertices.size() && (first + 1) < vertices.size()){
-                indices.push_back(second);
-                indices.push_back(second + 1);
-                indices.push_back(first + 1);
-            }
-        }
-    }
-}
-
 int main() {
 
     // The window we'll be rendering to
@@ -212,20 +166,11 @@ int main() {
     }
 
     std::vector<glm::vec3> vertices;
-    std::vector<GLuint> indices;
-    
-    // Setup vertex data
-    /*
-    vertices = {
-        glm::vec3(-0.5f, -0.5f, 0.0f),
-        glm::vec3(0.5f, -0.5f, 0.0f),
-        glm::vec3(0.0f, 0.5f, 0.0f)
-    };
-    // Indices in counterclockwise order
-    indices = {0, 1, 2};
-    */
-    createEarthApproximation(vertices, indices);
-    GLuint VAO = vertexSetup(vertices, indices);
+    std::vector<glm::vec3> normals;
+    std::vector<glm::ivec3> faces;
+        
+    loadOBJ("./ship.obj", vertices, normals, faces);
+    GLuint VAO = vertexSetup(vertices, normals, faces);
 
     // Setup time related variables
     Uint32 currentTime = SDL_GetTicks();
@@ -298,7 +243,7 @@ int main() {
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
         // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, faces.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         // Swap buffers

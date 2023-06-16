@@ -1,9 +1,9 @@
 #include "sphere.h"
 
-Sphere::Sphere(glm::vec3 center, float radius) 
-    : center(center), radius(radius) {}
+Sphere::Sphere(const glm::vec3& center, float radius, Material* mat)
+    : center(center), radius(radius) , material(mat) {}
 
-bool Sphere::rayIntersect(const glm::vec3& rayOrigin, const glm::vec3& rayDirection) const {
+Intersect Sphere::rayIntersect(const glm::vec3& rayOrigin, const glm::vec3& rayDirection) const {
     // oc is the vector from the ray's origin to the sphere's center
     glm::vec3 oc = rayOrigin - center;
 
@@ -25,5 +25,12 @@ bool Sphere::rayIntersect(const glm::vec3& rayOrigin, const glm::vec3& rayDirect
     float discriminant = b * b - 4 * a * c;
 
     // return true if the discriminant is greater than 0, indicating the ray intersects the sphere
-    return discriminant > 0;
+    if (discriminant < 0) {
+        return Intersect(glm::vec3(0), glm::vec3(0), std::numeric_limits<float>::infinity()); // No intersection
+    } else {
+        float dist = (-b - sqrt(discriminant)) / (2.0f * a);
+        glm::vec3 point = rayOrigin + dist * rayDirection;
+        glm::vec3 normal = glm::normalize(point - center);
+        return Intersect(point, normal, dist);
+    }
 }

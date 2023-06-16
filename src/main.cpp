@@ -18,12 +18,18 @@ SDL_Renderer* renderer = nullptr;
 
 
 Color castRay(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const std::vector<Object*>& objects) {
+    float minDist = std::numeric_limits<float>::infinity();
+    Color hitColor = Color(173, 216, 230);  // Default to light blue
+
     for (const auto& object : objects) {
-        if (object->rayIntersect(rayOrigin, rayDirection)) {
-            return Color(255, 0, 0);  // Red
+        Intersect intersect = object->rayIntersect(rayOrigin, rayDirection);
+        if (intersect.distance < minDist) {
+            minDist = intersect.distance;
+            hitColor = object->material->diffuse;
         }
     }
-    return Color(173, 216, 230);  // Light blue
+    
+    return hitColor;
 }
 
 void pixel(glm::vec2 position, Color color) {
@@ -74,8 +80,15 @@ int main(int argc, char* args[]) {
     unsigned int currentTime;
     float dT;
 
+    Material* rubber = new Material(Color(80, 0, 0));
+
     std::vector<Object*> objects;
-    objects.push_back(new Sphere(glm::vec3(0.0f, 0.0f, -5.0f), 1.0f));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(0.0f, 0.0f, -5.0f),
+            1.0f,
+            rubber
+        ));
 
     while (isRunning) {
         while (SDL_PollEvent(&event)) {

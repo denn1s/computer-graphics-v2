@@ -6,6 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
+#include <array>
 #include <SDL2/SDL_opengl.h>
 
 #include "shaders.h"
@@ -58,90 +59,118 @@ bool init(SDL_Window*& window, SDL_GLContext& context) {
     return true;
 }
 
-GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const std::vector<GLuint>& faces)
-{
-    GLuint VAO, VBO, NBO, EBO;
+GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const std::vector<Face>& faces) {
+    // Step 1: Unpack the OBJ data into a format OpenGL understands.
+    std::vector<float> unpackedData;
+    
+    for (Face face : faces) {
+        for (auto vertexIndex: face.vertexIndices) {
+            // Add vertex positions
+            unpackedData.push_back(vertices[vertexIndex[0]].x);
+            unpackedData.push_back(vertices[vertexIndex[0]].y);
+            unpackedData.push_back(vertices[vertexIndex[0]].z);
 
-    // Generate and bind the vertex array object (VAO)
-    glGenVertexArrays(1, &VAO); // Generate VAO id
-    glBindVertexArray(VAO); // Bind it so upcoming GL calls will modify this VAO
+            // Add normals
+            unpackedData.push_back(normals[vertexIndex[2]].x);
+            unpackedData.push_back(normals[vertexIndex[2]].y);
+            unpackedData.push_back(normals[vertexIndex[2]].z);
+        }
+    }
+    
+    /*
+    std::cout << vertices.size() << std::endl;
+    std::cout << normals.size() << std::endl;
+    std::cout << faces.size() << std::endl;
 
-    // Generate and bind the vertex buffer object (VBO - vertices)
-    glGenBuffers(1, &VBO); // Generate VBO id
-    glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind it so we're modifying this VBO
-    // Fill the VBO with data:
-    // GL_ARRAY_BUFFER: Type of data
-    // vertices.size() * sizeof(glm::vec3): Size of data (bytes)
-    // &vertices[0]: Actual data
-    // GL_STATIC_DRAW: We're not going to change the vertex data
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-    // Set the vertex attributes:
-    // 0: Attribute index (matches layout in shader)
-    // 3: Number of components per vertex attribute (x, y, and z)
-    // GL_FLOAT: Type of each component
-    // GL_FALSE: Don't normalize the data
-    // 0: stride, distance between consecutive vertex attribute sets (0 means tightly packed)
-    // (GLvoid*)0: Offset of where the position data begins in the buffer
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
-    glEnableVertexAttribArray(0); // Enable the vertex attribute
+    std::cout << unpackedData.size() << std::endl;
 
-    // Generate and bind the normal buffer object (NBO - normals)
-    glGenBuffers(1, &NBO);
-    glBindBuffer(GL_ARRAY_BUFFER, NBO);
-    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), &normals[0], GL_STATIC_DRAW);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+    std::cout << "Staaaart" << std::endl;
+
+    for (const float& value : unpackedData) {
+        std::cout << value << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Ennnd" << std::endl;
+    */
+    
+
+    // Step 2: Create and bind a Vertex Array Object (VAO).
+    GLuint VAO;
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+
+    // Step 3: Create a Vertex Buffer Object (VBO) and copy the vertex data to it.
+    GLuint VBO;
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, unpackedData.size() * sizeof(float), unpackedData.data(), GL_STATIC_DRAW);
+
+    // Step 4: Set up vertex attribute pointers.
+    // Position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // Normal attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    // Generate and bind the element buffer object (EBO - faces)
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * sizeof(GLuint), &faces[0], GL_STATIC_DRAW);
-
-    // Unbind the VAO
+    // Unbind VAO (NOT the EBO)
     glBindVertexArray(0);
 
-    return VAO; // Return the VAO id
+    // Delete the VBO as we've copied the data to the GPU
+    glDeleteBuffers(1, &VBO);
+
+    return VAO;
 }
 
 
-// This function sets up the vertex data and creates a VAO, VBO and EBO
-GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<GLuint>& indices) {
-    // Generate the Vertex Array Object (VAO), the Vertex Buffer Object (VBO) and the Element Buffer Object (EBO)
-    GLuint VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    
-    // Bind the Vertex Array Object
-    glBindVertexArray(VAO);
+GLuint setupShaders(const char* vertexSource, const char* fragmentSource) {
+    // Create and compile the vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexSource, NULL);
+    glCompileShader(vertexShader);
 
-    // Bind the Vertex Buffer
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    
-    // Send the vertex data to the Vertex Buffer
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
+    // Check the vertex shader
+    GLint success;
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[512];
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
 
-    // Bind the Element Buffer Object
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    
-    // Send the index data to the Element Buffer
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
-    
-    // Set the vertex attributes (only position here)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    
-    // Unbind the VAO (optional)
-    glBindVertexArray(0);
+    // Create and compile the fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+    glCompileShader(fragmentShader);
 
-    // Unbind the VBO, EBO and delete them
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
+    // Check the fragment shader
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[512];
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
 
-    // Return the VAO
-    return VAO;
+    // Link shaders
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    // Check the shader program
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[512];
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+
+    // Delete shaders as they're linked into our program now and no longer necessery
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return shaderProgram;
 }
 
 int main() {
@@ -167,11 +196,11 @@ int main() {
 
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
-    std::vector<glm::ivec3> faces;
+    std::vector<Face> faces;
         
-    loadOBJ("./ship.obj", vertices, normals, faces);
+    loadOBJ("./models/ship.obj", vertices, normals, faces);
     GLuint VAO = vertexSetup(vertices, normals, faces);
-
+        
     // Setup time related variables
     Uint32 currentTime = SDL_GetTicks();
     Uint32 lastTime = 0;
@@ -179,7 +208,9 @@ int main() {
 
     float rotateAngle = 0.0f;
 
-    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+    glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
+    glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
 
     // Main loop
     bool running = true;
@@ -190,16 +221,24 @@ int main() {
                 running = false;
             }
             if (event.type == SDL_KEYDOWN) {
+                float cameraSpeed = 0.5f; // adjust accordingly
                 switch (event.key.keysym.sym) {
-                    case SDLK_UP:
-                        cameraPos.z -= 1.0f; // move closer
+                    case SDLK_w:
+                        cameraPos += cameraSpeed * cameraFront;
                         break;
-                    case SDLK_DOWN:
-                        cameraPos.z += 1.0f; // move away
+                    case SDLK_s:
+                        cameraPos -= cameraSpeed * cameraFront;
+                        break;
+                    case SDLK_a:
+                        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+                        break;
+                    case SDLK_d:
+                        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
                         break;
                 }
             }
         }
+
         // Calculate delta time
         lastTime = currentTime;
         currentTime = SDL_GetTicks();
@@ -210,10 +249,11 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 view = glm::lookAt(
-            cameraPos, // Camera position is updated based on keyboard input
-            glm::vec3(0.0f, 0.0f, 0.0f), // and looks at the origin
-            glm::vec3(0.0f, 1.0f, 0.0f)  // Head is up (set to 0,-1,0 to look upside-down)
+            cameraPos, // Camera is at (4,3,3), in World Space
+            cameraPos + cameraFront, // and looks at the origin
+            cameraUp  // Head is up (set to 0,-1,0 to look upside-down)
         );
+
 
         glm::mat4 projection = glm::perspective(
             glm::radians(45.0f), // The field of view
@@ -243,7 +283,9 @@ int main() {
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
         // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glDrawElements(GL_TRIANGLES, faces.size(), GL_UNSIGNED_INT, 0);
+        // glDrawElements(GL_TRIANGLES, faces.size() * 3, GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, faces.size() * 3);
+
         glBindVertexArray(0);
 
         // Swap buffers

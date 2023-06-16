@@ -3,6 +3,7 @@ project(CG)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_BUILD_TYPE Debug)
 
 # Find required packages
 find_package(SDL2 REQUIRED)
@@ -20,6 +21,10 @@ file(GLOB SOURCE_FILES
 
 # Add the executable
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+
+# Copy models
+# file(COPY ${CMAKE_SOURCE_DIR}/src/models DESTINATION ${CMAKE_BINARY_DIR})
+
 
 # Link libraries to the executable
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})

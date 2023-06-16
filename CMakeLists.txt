@@ -1,18 +1,24 @@
-cmake_minimum_required(VERSION 3.26)
-project(CG)
+cmake_minimum_required(VERSION 3.10)
 
+# set the project name
+project(RT)
+
+# specify the C++ standard
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Find SDL2 and glm
+# find all .cpp files in the src directory
+file(GLOB SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
+
+# add the executable
+add_executable(RT ${SOURCE_FILES})
+
+# find and include SDL2 and GLM
 find_package(SDL2 REQUIRED)
-find_package(glm REQUIRED)
-
-# Include the directories with headers
 include_directories(${SDL2_INCLUDE_DIRS})
 
-# Add the executable
-add_executable(CG src/main.cpp)
+find_package(glm REQUIRED)
+include_directories(${GLM_INCLUDE_DIRS})
 
-# Link against SDL2 and glm
-target_link_libraries(CG ${SDL2_LIBRARIES} glm)
+# link libraries
+target_link_libraries(RT ${SDL2_LIBRARIES} ${GLM_LIBRARIES})

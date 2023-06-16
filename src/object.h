@@ -6,11 +6,12 @@
 
 class Object {
 public:
-    Object() {}
+    explicit Object(const Material& mat) : material(mat) {}
     virtual ~Object() = default;
-
-    // A pure virtual function providing interface framework.
+    
     virtual Intersect rayIntersect(const glm::vec3& rayOrigin, const glm::vec3& rayDirection) const = 0;
+    const Material& getMaterial() const { return material; }
 
-    Material* material = nullptr;
+protected:
+    Material material;
 };

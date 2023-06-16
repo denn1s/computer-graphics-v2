@@ -25,7 +25,7 @@ Color castRay(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const s
         Intersect intersect = object->rayIntersect(rayOrigin, rayDirection);
         if (intersect.distance < minDist) {
             minDist = intersect.distance;
-            hitColor = object->material->diffuse;
+            hitColor = object->getMaterial().diffuse;
         }
     }
     
@@ -80,7 +80,7 @@ int main(int argc, char* args[]) {
     unsigned int currentTime;
     float dT;
 
-    Material* rubber = new Material(Color(80, 0, 0));
+    Material rubber(Color(80, 0, 0));
 
     std::vector<Object*> objects;
     objects.push_back(

@@ -1,7 +1,7 @@
 #include "sphere.h"
 
-Sphere::Sphere(const glm::vec3& center, float radius, Material* mat)
-    : center(center), radius(radius) , material(mat) {}
+Sphere::Sphere(const glm::vec3& center, float radius, const Material& mat)
+    : Object(mat), center(center), radius(radius) {}
 
 Intersect Sphere::rayIntersect(const glm::vec3& rayOrigin, const glm::vec3& rayDirection) const {
     // oc is the vector from the ray's origin to the sphere's center

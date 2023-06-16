@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 project(CG)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Debug)
 
 # Find required packages
@@ -21,6 +21,9 @@ file(GLOB SOURCE_FILES
 
 # Add the executable
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+
+# specify the required features 
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 # Copy models
 # file(COPY ${CMAKE_SOURCE_DIR}/src/models DESTINATION ${CMAKE_BINARY_DIR})

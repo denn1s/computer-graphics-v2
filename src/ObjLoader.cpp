@@ -9,7 +9,11 @@
 
 #include "ObjLoader.h"
 
-bool loadOBJ(const char* path, std::vector<glm::vec3>& out_vertices, std::vector<glm::vec3>& out_normals, std::vector<Face>& out_faces)
+bool loadOBJ(const char* path, 
+             std::vector<glm::vec3>& out_vertices, 
+             std::vector<glm::vec3>& out_normals, 
+             std::vector<Face>& out_faces,
+             std::vector<std::string>& out_materials)
 {
     std::ifstream file(path);
     if (!file)
@@ -23,6 +27,7 @@ bool loadOBJ(const char* path, std::vector<glm::vec3>& out_vertices, std::vector
     std::string lineHeader;
     glm::vec3 vertex, normal;
     Face face;
+    std::string currentMaterial;
 
     while (std::getline(file, line))
     {
@@ -45,20 +50,26 @@ bool loadOBJ(const char* path, std::vector<glm::vec3>& out_vertices, std::vector
             std::array<int, 3> vertexIndices;
             while (iss >> lineHeader)
             {
-              std::istringstream tokenstream(lineHeader);
-              std::string token;
-              std::array<int, 3> vertexIndices;
+                std::istringstream tokenstream(lineHeader);
+                std::string token;
+                std::array<int, 3> vertexIndices;
 
-              // Read all three values separated by '/'
-              for (int i = 0; i < 3; ++i) {
-                  std::getline(tokenstream, token, '/');
-                  vertexIndices[i] = std::stoi(token) - 1;
-              }
+                // Read all three values separated by '/'
+                for (int i = 0; i < 3; ++i) {
+                    std::getline(tokenstream, token, '/');
+                    vertexIndices[i] = std::stoi(token) - 1;
+                }
 
-              face.vertexIndices.push_back(vertexIndices);
+                face.vertexIndices.push_back(vertexIndices);
             }
             out_faces.push_back(face);
+            out_materials.push_back(currentMaterial);
+
             face.vertexIndices.clear();
+        }
+        else if (lineHeader == "usemtl")
+        {
+            iss >> currentMaterial;
         }
     }
 

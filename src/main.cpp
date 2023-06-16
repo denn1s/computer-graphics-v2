@@ -8,9 +8,11 @@
 #include <vector>
 #include <array>
 #include <SDL2/SDL_opengl.h>
+#include <unordered_map>
 
 #include "shaders.h"
 #include "ObjLoader.h"
+#include "MtlLoader.h"
 
 bool init(SDL_Window*& window, SDL_GLContext& context) {
 
@@ -59,11 +61,17 @@ bool init(SDL_Window*& window, SDL_GLContext& context) {
     return true;
 }
 
-GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const std::vector<Face>& faces) {
+GLuint vertexSetup(
+    const std::vector<glm::vec3>& vertices,
+    const std::vector<glm::vec3>& normals,
+    const std::vector<Face>& faces,
+    const std::unordered_map<std::string, glm::vec3>& materials,
+    const std::vector<std::string>& materialsPerFace
+) {
     // Step 1: Unpack the OBJ data into a format OpenGL understands.
     std::vector<float> unpackedData;
     
-    for (Face face : faces) {
+    for (std::size_t index = 0; Face face : faces) {
         for (auto vertexIndex: face.vertexIndices) {
             // Add vertex positions
             unpackedData.push_back(vertices[vertexIndex[0]].x);
@@ -74,26 +82,16 @@ GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<glm
             unpackedData.push_back(normals[vertexIndex[2]].x);
             unpackedData.push_back(normals[vertexIndex[2]].y);
             unpackedData.push_back(normals[vertexIndex[2]].z);
+
+            // Add diffuse light to array
+            glm::vec3 material = materials.at(materialsPerFace[index]);
+
+            unpackedData.push_back(material.x);
+            unpackedData.push_back(material.y);
+            unpackedData.push_back(material.z);
         }
+        ++index;
     }
-    
-    /*
-    std::cout << vertices.size() << std::endl;
-    std::cout << normals.size() << std::endl;
-    std::cout << faces.size() << std::endl;
-
-    std::cout << unpackedData.size() << std::endl;
-
-    std::cout << "Staaaart" << std::endl;
-
-    for (const float& value : unpackedData) {
-        std::cout << value << " ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "Ennnd" << std::endl;
-    */
-    
 
     // Step 2: Create and bind a Vertex Array Object (VAO).
     GLuint VAO;
@@ -108,11 +106,14 @@ GLuint vertexSetup(const std::vector<glm::vec3>& vertices, const std::vector<glm
 
     // Step 4: Set up vertex attribute pointers.
     // Position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     // Normal attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    // Color attribute
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     // Unbind VAO (NOT the EBO)
     glBindVertexArray(0);
@@ -197,9 +198,19 @@ int main() {
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
     std::vector<Face> faces;
+    std::vector<std::string> materialsPerFace;
+    std::unordered_map<std::string, glm::vec3> materials;
         
-    loadOBJ("./models/ship.obj", vertices, normals, faces);
-    GLuint VAO = vertexSetup(vertices, normals, faces);
+    loadOBJ("./models/cube.obj", vertices, normals, faces, materialsPerFace);
+    loadMTL("./models/cube.mtl", materials);
+
+    GLuint VAO = vertexSetup(
+        vertices,
+        normals,
+        faces,
+        materials,
+        materialsPerFace
+    );
         
     // Setup time related variables
     Uint32 currentTime = SDL_GetTicks();

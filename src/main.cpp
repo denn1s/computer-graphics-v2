@@ -11,6 +11,8 @@
 #include "color.h"
 #include "object.h"
 #include "sphere.h"
+#include "camera.h"
+
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
@@ -56,7 +58,7 @@ void pixel(glm::vec2 position, Color color) {
     SDL_RenderDrawPoint(renderer, position.x, position.y);
 }
 
-void render(std::vector<Object*>& objects) {
+void render(const Camera& camera, std::vector<Object*>& objects) {
     for (int y = 0; y < SCREEN_HEIGHT; ++y) {
         for (int x = 0; x < SCREEN_WIDTH; ++x) {
             // Map the pixel coordinate to screen space [-1, 1]
@@ -70,7 +72,7 @@ void render(std::vector<Object*>& objects) {
             glm::vec3 rayDirection = glm::normalize(glm::vec3(screenX, screenY, -1.0f));
 
             // Cast the ray and get the pixel color
-            Color pixelColor = castRay(glm::vec3(0.0f, 0.0f, 0.0f), rayDirection, objects);
+            Color pixelColor = castRay(camera.position, rayDirection, objects);
 
             // Draw the pixel on screen with the returned color
             pixel(glm::vec2(x, y), pixelColor);
@@ -129,10 +131,43 @@ int main(int argc, char* args[]) {
             ivory
         ));
 
+    Camera camera(glm::vec3(0, 0, 0), glm::vec3(-0.25f, 0.875f, -12.5f), 10.0f);
+
     while (isRunning) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                isRunning = false;
+            switch (event.type) {
+                case SDL_QUIT:
+                    isRunning = false;
+                    break;
+                case SDL_KEYDOWN:
+                    switch (event.key.keysym.sym) {
+                        case SDLK_UP:
+                            // Move closer to the target
+                            camera.move(-1.0f);  // You may need to adjust the value as per your needs
+                            break;
+                        case SDLK_DOWN:
+                            // Move away from the target
+                            camera.move(1.0f);  // You may need to adjust the value as per your needs
+                            break;
+                        case SDLK_a:
+                            // Rotate up
+                            camera.rotate(-1.0f, 0.0f);  // You may need to adjust the value as per your needs
+                            break;
+                        case SDLK_d:
+                            // Rotate down
+                            camera.rotate(1.0f, 0.0f);  // You may need to adjust the value as per your needs
+                            break;
+                        case SDLK_w:
+                            // Rotate left
+                            camera.rotate(0.0f, -1.0f);  // You may need to adjust the value as per your needs
+                            break;
+                        case SDLK_s:
+                            // Rotate right
+                            camera.rotate(0.0f, 1.0f);  // You may need to adjust the value as per your needs
+                            break;
+                        default:
+                            break;
+                    }
             }
         }
 
@@ -144,7 +179,7 @@ int main(int argc, char* args[]) {
         dT = (currentTime - lastTime) / 1000.0f;  // Time since last frame in seconds
         lastTime = currentTime;
 
-        render(objects);
+        render(camera, objects);
 
         SDL_RenderPresent(renderer);
     }

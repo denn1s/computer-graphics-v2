@@ -26,7 +26,7 @@ Intersect Sphere::rayIntersect(const glm::vec3& rayOrigin, const glm::vec3& rayD
 
     // return true if the discriminant is greater than 0, indicating the ray intersects the sphere
     if (discriminant < 0) {
-        return Intersect(glm::vec3(0), glm::vec3(0), std::numeric_limits<float>::infinity()); // No intersection
+        return Intersect(); // No intersection
     } else {
         float dist = (-b - sqrt(discriminant)) / (2.0f * a);
         glm::vec3 point = rayOrigin + dist * rayDirection;

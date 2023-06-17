@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 
+#include "light.h"
 #include "color.h"
 #include "object.h"
 #include "sphere.h"
@@ -15,22 +16,40 @@
 #define SCREEN_HEIGHT 600
 
 SDL_Renderer* renderer = nullptr;
+Light light(glm::vec3(-20, 20, 20), 1.5f);
 
+Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Object*>& objects) {
+    Intersect intersect;
+    Object* hitObject = nullptr;
+    float zBuffer = std::numeric_limits<float>::infinity();
 
-Color castRay(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const std::vector<Object*>& objects) {
-    float minDist = std::numeric_limits<float>::infinity();
-    Color hitColor = Color(173, 216, 230);  // Default to light blue
-
-    for (const auto& object : objects) {
-        Intersect intersect = object->rayIntersect(rayOrigin, rayDirection);
-        if (intersect.distance < minDist) {
-            minDist = intersect.distance;
-            hitColor = object->getMaterial().diffuse;
+    // Check all objects for intersection
+    for (auto& obj : objects) {
+        Intersect tempIntersect = obj->rayIntersect(orig, dir);
+        if (tempIntersect.isIntersecting && tempIntersect.distance < zBuffer) {
+            zBuffer = tempIntersect.distance;
+            intersect = tempIntersect;
+            hitObject = obj;
         }
     }
-    
-    return hitColor;
+
+    if (!intersect.isIntersecting) {  // If no intersection
+        return Color(70, 204, 255);  // Sky color
+    } 
+    // If intersection
+    // Calculate the light's direction vector
+    glm::vec3 lightDir = glm::normalize(light.position - intersect.point);
+
+    // The dot product of two normalized vectors is the cosine of the angle between them
+    float diffuseLightIntensity = std::max(0.0f, glm::dot(intersect.normal, lightDir));
+
+    // Intensity times color for diffuse light (Lambertian reflection)
+    Color diffuseLight = light.intensity * diffuseLightIntensity * hitObject->getMaterial().diffuse;
+
+    return diffuseLight;
 }
+
+
 
 void pixel(glm::vec2 position, Color color) {
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
@@ -81,13 +100,33 @@ int main(int argc, char* args[]) {
     float dT;
 
     Material rubber(Color(80, 0, 0));
+    Material ivory(Color(100, 100, 80));
 
     std::vector<Object*> objects;
+  
     objects.push_back(
         new Sphere(
-            glm::vec3(0.0f, 0.0f, -5.0f),
-            1.0f,
+            glm::vec3(0.0f, -1.5f, -10.0f),
+            1.5f,
+            ivory
+        ));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(-2.0f, -1.0f, -12.0f),
+            2.0f,
             rubber
+        ));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(1.0f, 1.0f, -8.0f),
+            1.7f,
+            rubber
+        ));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(0.0f, 5.0f, -20.0f),
+            5.0f,
+            ivory
         ));
 
     while (isRunning) {

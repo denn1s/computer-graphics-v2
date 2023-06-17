@@ -18,7 +18,7 @@
 #define SCREEN_HEIGHT 600
 
 SDL_Renderer* renderer = nullptr;
-Light light(glm::vec3(-20, 20, 20), 1.5f);
+Light light(glm::vec3(0, 0, -20), 1.5f);
 
 Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Object*>& objects) {
     Intersect intersect;
@@ -59,6 +59,9 @@ void pixel(glm::vec2 position, Color color) {
 }
 
 void render(const Camera& camera, std::vector<Object*>& objects) {
+    // This is the "simulated" up vector
+    glm::vec3 simulatedUp = glm::vec3(0, 1, 0);
+
     for (int y = 0; y < SCREEN_HEIGHT; ++y) {
         for (int x = 0; x < SCREEN_WIDTH; ++x) {
             // Map the pixel coordinate to screen space [-1, 1]
@@ -68,17 +71,24 @@ void render(const Camera& camera, std::vector<Object*>& objects) {
             // Adjust for aspect ratio
             screenX *= ASPECT_RATIO;
 
-            // Calculate the direction of the ray for this pixel
-            glm::vec3 rayDirection = glm::normalize(glm::vec3(screenX, screenY, -1.0f));
+            // Compute the direction of the ray for this pixel
+            glm::vec3 dir = glm::normalize(camera.target - camera.position);
 
-            // Cast the ray and get the pixel color
-            Color pixelColor = castRay(camera.position, rayDirection, objects);
+            // Compute the real right and up vectors
+            glm::vec3 right = glm::normalize(glm::cross(dir, simulatedUp));
+            glm::vec3 up = glm::cross(right, dir);
+
+            dir = dir + right * screenX + up * screenY;
+
+            // Then cast the ray
+            Color pixelColor = castRay(camera.position, glm::normalize(dir), objects);
 
             // Draw the pixel on screen with the returned color
             pixel(glm::vec2(x, y), pixelColor);
         }
     }
 }
+
 
 
 int main(int argc, char* args[]) {
@@ -105,33 +115,32 @@ int main(int argc, char* args[]) {
     Material ivory(Color(100, 100, 80));
 
     std::vector<Object*> objects;
-  
     objects.push_back(
         new Sphere(
-            glm::vec3(0.0f, -1.5f, -10.0f),
-            1.5f,
+            glm::vec3(2.0f, 4.5f, -2.0f),
+            1.1f,
+            rubber
+        ));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(3.0f, 4.0f, 2.0f),
+            1.7f,
             ivory
         ));
     objects.push_back(
         new Sphere(
-            glm::vec3(-2.0f, -1.0f, -12.0f),
+            glm::vec3(-1.3f, 3.0f, -3.0f),
+            3.0f,
+            rubber
+        ));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(0.0f, 0.0f, 0.0f),
             2.0f,
-            rubber
-        ));
-    objects.push_back(
-        new Sphere(
-            glm::vec3(1.0f, 1.0f, -8.0f),
-            1.7f,
-            rubber
-        ));
-    objects.push_back(
-        new Sphere(
-            glm::vec3(0.0f, 5.0f, -20.0f),
-            5.0f,
             ivory
         ));
 
-    Camera camera(glm::vec3(0, 0, 0), glm::vec3(-0.25f, 0.875f, -12.5f), 10.0f);
+    Camera camera(glm::vec3(0, 0, -20.0f), glm::vec3(0, 0, 0), 10.0f);
 
     while (isRunning) {
         while (SDL_PollEvent(&event)) {

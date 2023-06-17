@@ -1,15 +1,14 @@
 #include <map>
 #include <iostream>
 #include <SDL2/SDL.h>
-#include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <array>
-#include <SDL2/SDL_opengl.h>
 #include <unordered_map>
 
+#include "glad.h"
 #include "shaders.h"
 #include "ObjLoader.h"
 #include "MtlLoader.h"
@@ -47,13 +46,12 @@ bool init(SDL_Window*& window, SDL_GLContext& context) {
     // Create an OpenGL context associated with the window.
     context = SDL_GL_CreateContext(window);
 
-    // Initialize GLEW. GLEW manages function pointers for OpenGL so we want to initialize it before
-    // calling any OpenGL functions. We are using the experimental flag to get access to more features.
-    glewExperimental = GL_TRUE;
-    GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW: " << glewGetErrorString(err) << std::endl;
-        return false;
+    // glad
+    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
+    {
+        // Failed to initialize GLAD
+        std::cout << "Failed to load glad" << std::endl;
+        return -1;
     }
 
     glEnable(GL_DEPTH_TEST);

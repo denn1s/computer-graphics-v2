@@ -99,8 +99,8 @@ void render(const Camera& camera, std::vector<Object*>& objects) {
 
     for (int y = 0; y < SCREEN_HEIGHT; ++y) {
         for (int x = 0; x < SCREEN_WIDTH; ++x) {
-            // float random_value = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
-            // if (random_value > 0.8) {
+            float random_value = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+            if (random_value > 0.9) {
             // Map the pixel coordinate to screen space [-1, 1]
             float screenX =  (2.0f * x) / SCREEN_WIDTH - 1.0f;
             float screenY = -(2.0f * y) / SCREEN_HEIGHT + 1.0f;
@@ -122,7 +122,7 @@ void render(const Camera& camera, std::vector<Object*>& objects) {
 
             // Draw the pixel on screen with the returned color
             pixel(glm::vec2(x, y), pixelColor);
-            // }
+            }
         }
     }
 }
@@ -189,6 +189,9 @@ int main(int argc, char* args[]) {
             ivory
         ));
     
+    int frameCount = 0;
+    float elapsedTime = 0.0f;
+
     while (isRunning) {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
@@ -238,6 +241,17 @@ int main(int argc, char* args[]) {
         render(camera, objects);
 
         SDL_RenderPresent(renderer);
+
+
+        frameCount++;
+        elapsedTime += dT;
+        if (elapsedTime >= 1.0f) {
+            float fps = static_cast<float>(frameCount) / elapsedTime;
+            std::cout << "FPS: " << fps << std::endl;
+
+            frameCount = 0;
+            elapsedTime = 0.0f;
+        }
     }
 
     for (Object* object : objects) {

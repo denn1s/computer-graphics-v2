@@ -1,6 +1,6 @@
 #define FOV glm::radians(90.0f)  // Field of view is 90 degrees
 #define ASPECT_RATIO (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT
-
+#define SHADOW_BIAS 0.00001f
 #include <SDL2/SDL.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -19,7 +19,23 @@
 #define SCREEN_HEIGHT 600
 
 SDL_Renderer* renderer = nullptr;
-Light light(glm::vec3(0, 0, -20), 1.5f, Color(255, 255, 255));
+Light light(glm::vec3(0.0f, 0.0f, -20.0f), 1.5f, Color(255, 255, 255));
+Camera camera(glm::vec3(0.0f, 0.0f, -20.0f), glm::vec3(0.0f, 0.0f, 0.0f), 10.0f);
+
+float castShadow(const glm::vec3& shadowOrig, const glm::vec3& lightDir, const std::vector<Object*>& objects, Object* hitObject) {
+    for (auto& obj : objects) {
+        if (obj != hitObject) {
+            Intersect shadowIntersect = obj->rayIntersect(shadowOrig, lightDir);
+            if (shadowIntersect.isIntersecting && shadowIntersect.distance > 0) {  // zbuffer?
+                const float shadowIntensity =  (1.0f - glm::min(1.0f, shadowIntersect.distance / glm::length(light.position - shadowOrig)));
+                return shadowIntensity;
+            }
+        }
+    }
+
+    return 1.0f;
+}
+
 
 Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Object*>& objects) {
     Intersect intersect;
@@ -41,33 +57,33 @@ Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Obj
     }
 
     const Material& hitMaterial = hitObject->getMaterial();
-
-    // If intersection
     // Calculate the light's direction vector
     glm::vec3 lightDir = glm::normalize(light.position - intersect.point);
     
     // Calculate the view direction vector
     glm::vec3 viewDir = glm::normalize(orig - intersect.point);
 
+    // Calculate shadow intensity
+    float shadowIntensity = castShadow(
+        intersect.point + SHADOW_BIAS * intersect.normal,
+        lightDir, objects, hitObject);
+
+    float intensity = shadowIntensity * light.intensity;
+
     // The dot product of two normalized vectors is the cosine of the angle between them
     float diffuseLightIntensity = std::max(0.0f, glm::dot(intersect.normal, lightDir));
 
     // Calculate the reflection direction vector
-    // Reflect the negative light direction vector about the normal vector at the intersection point
     glm::vec3 reflectDir = glm::reflect(-lightDir, intersect.normal);
-    
+
     // Calculate the specular light intensity
-    // This is done by taking the dot product between the view direction and the reflected light direction,
-    // and raising it to the power of the specular coefficient
     float spec = std::pow(std::max(0.0f, glm::dot(viewDir, reflectDir)), hitMaterial.specularCoefficient);
 
-    // Calculate the color for the diffuse light
     // Intensity times albedo times color for diffuse light (Lambertian reflection)
-    Color diffuseLight = light.intensity * diffuseLightIntensity * hitMaterial.albedo * hitMaterial.diffuse;
+    Color diffuseLight = intensity * diffuseLightIntensity * hitMaterial.albedo * hitMaterial.diffuse;
 
-    // Calculate the color for the specular light
     // Intensity times albedo times color for specular light (Phong reflection)
-    Color specularLight = light.intensity * spec * hitMaterial.specularAlbedo * light.color;
+    Color specularLight = intensity * spec * hitMaterial.specularAlbedo * light.color;
 
     return diffuseLight + specularLight;
 }
@@ -147,6 +163,7 @@ int main(int argc, char* args[]) {
     );
 
     std::vector<Object*> objects;
+    
     objects.push_back(
         new Sphere(
             glm::vec3(2.0f, 4.5f, -2.0f),
@@ -171,9 +188,7 @@ int main(int argc, char* args[]) {
             2.0f,
             ivory
         ));
-
-    Camera camera(glm::vec3(0, 0, -20.0f), glm::vec3(0, 0, 0), 10.0f);
-
+    
     while (isRunning) {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {

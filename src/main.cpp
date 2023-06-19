@@ -19,7 +19,7 @@
 #define SCREEN_HEIGHT 600
 
 SDL_Renderer* renderer = nullptr;
-Light light(glm::vec3(0, 0, -20), 1.5f);
+Light light(glm::vec3(0, 0, -20), 1.5f, Color(255, 255, 255));
 
 Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Object*>& objects) {
     Intersect intersect;
@@ -38,21 +38,39 @@ Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Obj
 
     if (!intersect.isIntersecting) {  // If no intersection
         return Color(70, 204, 255);  // Sky color
-    } 
+    }
+
+    const Material& hitMaterial = hitObject->getMaterial();
+
     // If intersection
     // Calculate the light's direction vector
     glm::vec3 lightDir = glm::normalize(light.position - intersect.point);
+    
+    // Calculate the view direction vector
+    glm::vec3 viewDir = glm::normalize(orig - intersect.point);
 
     // The dot product of two normalized vectors is the cosine of the angle between them
     float diffuseLightIntensity = std::max(0.0f, glm::dot(intersect.normal, lightDir));
 
-    // Intensity times color for diffuse light (Lambertian reflection)
-    Color diffuseLight = light.intensity * diffuseLightIntensity * hitObject->getMaterial().diffuse;
+    // Calculate the reflection direction vector
+    // Reflect the negative light direction vector about the normal vector at the intersection point
+    glm::vec3 reflectDir = glm::reflect(-lightDir, intersect.normal);
+    
+    // Calculate the specular light intensity
+    // This is done by taking the dot product between the view direction and the reflected light direction,
+    // and raising it to the power of the specular coefficient
+    float spec = std::pow(std::max(0.0f, glm::dot(viewDir, reflectDir)), hitMaterial.specularCoefficient);
 
-    return diffuseLight;
+    // Calculate the color for the diffuse light
+    // Intensity times albedo times color for diffuse light (Lambertian reflection)
+    Color diffuseLight = light.intensity * diffuseLightIntensity * hitMaterial.albedo * hitMaterial.diffuse;
+
+    // Calculate the color for the specular light
+    // Intensity times albedo times color for specular light (Phong reflection)
+    Color specularLight = light.intensity * spec * hitMaterial.specularAlbedo * light.color;
+
+    return diffuseLight + specularLight;
 }
-
-
 
 void pixel(glm::vec2 position, Color color) {
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
@@ -115,8 +133,18 @@ int main(int argc, char* args[]) {
     unsigned int currentTime;
     float dT;
 
-    Material rubber(Color(80, 0, 0));
-    Material ivory(Color(100, 100, 80));
+    Material ivory(
+        Color(100, 100, 80),
+        0.6f,
+        0.3f,
+        50.0f
+    );
+    Material rubber(
+        Color(80, 0, 0),
+        0.9f,
+        0.1f,
+        10.0f
+    );
 
     std::vector<Object*> objects;
     objects.push_back(

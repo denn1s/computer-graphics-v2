@@ -9,6 +9,7 @@
 #include <vector>
 #include <cstdlib>
 
+#include "skybox.h"
 #include "light.h"
 #include "color.h"
 #include "object.h"
@@ -22,6 +23,7 @@
 SDL_Renderer* renderer = nullptr;
 Light light(glm::vec3(0.0f, 0.0f, -20.0f), 1.5f, Color(255, 255, 255));
 Camera camera(glm::vec3(0.0f, 0.0f, -20.0f), glm::vec3(0.0f, 0.0f, 0.0f), 10.0f);
+Skybox skybox("./textures/skybox.jpg");
 
 float castShadow(const glm::vec3& shadowOrig, const glm::vec3& lightDir, const std::vector<Object*>& objects, Object* hitObject) {
     for (auto& obj : objects) {
@@ -53,7 +55,7 @@ Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Obj
     }
 
     if (!intersect.isIntersecting || recursion >= MAX_RECURSION_DEPTH) {
-        return Color(70, 204, 255);  // Sky color
+        return skybox.getColor(dir);  // Sky color
     }
 
     const Material& hitMaterial = hitObject->getMaterial();

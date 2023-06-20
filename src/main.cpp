@@ -1,6 +1,6 @@
 #define FOV glm::radians(90.0f)  // Field of view is 90 degrees
 #define ASPECT_RATIO (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT
-#define SHADOW_BIAS 0.01f
+#define BIAS 0.01f
 #define MAX_RECURSION_DEPTH 2
 #include <SDL2/SDL.h>
 #include <glm/glm.hpp>
@@ -65,7 +65,7 @@ Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Obj
 
     // Calculate shadow intensity
     float shadowIntensity = castShadow(
-        intersect.point + SHADOW_BIAS * intersect.normal,
+        intersect.point + BIAS * intersect.normal,
         lightDir, objects, hitObject);
 
     float intensity = shadowIntensity * light.intensity;
@@ -86,17 +86,24 @@ Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Obj
     Color specularLight = intensity * spec * hitMaterial.specularAlbedo * light.color;
 
     // If the material is reflective, cast a reflected ray
-
-
     Color reflectedColor(0.0f, 0.0f, 0.0f);
     if (hitMaterial.reflectivity > 0) {
-        glm::vec3 offsetOrigin = intersect.point + intersect.normal * SHADOW_BIAS; 
-        reflectedColor = castRay(offsetOrigin, reflectDir, objects, recursion + 1);
+        glm::vec3 offsetOrigin = intersect.point + intersect.normal * BIAS; 
+        reflectedColor = hitMaterial.reflectivity * castRay(offsetOrigin, reflectDir, objects, recursion + 1);
     }
 
-    // Final color is a mix of local shading (diffuse + specular) and reflected color
-    return (1 - hitMaterial.reflectivity) * (diffuseLight + specularLight) + hitMaterial.reflectivity * reflectedColor;
+    // If the material is refractive, cast a refracted ray
+    Color refractedColor(0.0f, 0.0f, 0.0f);
+    if (hitMaterial.transparency > 0) {        
+        glm::vec3 refractDir = glm::refract(dir, intersect.normal, hitMaterial.refractionIndex);
+        glm::vec3 offsetOrigin = intersect.point - intersect.normal * BIAS; // moving along opposite to normal for refraction ray
+        refractedColor = hitMaterial.transparency * castRay(offsetOrigin, refractDir, objects, recursion + 1);
+    }
+
+    // Final color is a mix of local shading (diffuse + specular), reflected color and refracted color
+    return (1 - hitMaterial.reflectivity - hitMaterial.transparency) * (diffuseLight + specularLight) + reflectedColor + refractedColor;
 }
+
 
 void pixel(glm::vec2 position, Color color) {
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
@@ -180,6 +187,15 @@ int main(int argc, char* args[]) {
         1425.0f,
         0.9f
     );
+    Material glass(
+        Color(255, 255, 255),
+        0.1f,
+        1.0f,
+        125.0f,
+        0.0f,
+        0.9f,
+        0.1f
+    );
 
     std::vector<Object*> objects;
     
@@ -207,7 +223,27 @@ int main(int argc, char* args[]) {
             2.0f,
             mirror
         ));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(0.0f, 0.0f, -9.0f),
+            3.0f,
+            glass
+        ));
     
+    /*
+    objects.push_back(
+        new Sphere(
+            glm::vec3(-3.0f, 0.0f, 0.0f),
+            3.0f,
+            glass
+        ));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(3.0f, 0.0f, 0.0f),
+            1.1f,
+            rubber
+        ));
+    */
     int frameCount = 0;
     float elapsedTime = 0.0f;
 
@@ -252,14 +288,24 @@ int main(int argc, char* args[]) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
+        render(objects);
+
+        SDL_RenderPresent(renderer);
+
         // Calculate the deltaTime
         currentTime = SDL_GetTicks();
         dT = (currentTime - lastTime) / 1000.0f;  // Time since last frame in seconds
         lastTime = currentTime;
 
-        render(objects);
+        frameCount++;
+        elapsedTime += dT;
+        if (elapsedTime >= 1.0f) {
+            float fps = static_cast<float>(frameCount) / elapsedTime;
+            std::cout << "FPS: " << fps << std::endl;
 
-        SDL_RenderPresent(renderer);
+            frameCount = 0;
+            elapsedTime = 0.0f;
+        }
     }
 
     for (Object* object : objects) {

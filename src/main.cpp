@@ -1,6 +1,7 @@
 #define FOV glm::radians(90.0f)  // Field of view is 90 degrees
 #define ASPECT_RATIO (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT
-#define SHADOW_BIAS 0.00001f
+#define SHADOW_BIAS 0.01f
+#define MAX_RECURSION_DEPTH 2
 #include <SDL2/SDL.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -36,8 +37,7 @@ float castShadow(const glm::vec3& shadowOrig, const glm::vec3& lightDir, const s
     return 1.0f;
 }
 
-
-Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Object*>& objects) {
+Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Object*>& objects, const short recursion = 0) {
     Intersect intersect;
     Object* hitObject = nullptr;
     float zBuffer = std::numeric_limits<float>::infinity();
@@ -52,7 +52,7 @@ Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Obj
         }
     }
 
-    if (!intersect.isIntersecting) {  // If no intersection
+    if (!intersect.isIntersecting || recursion >= MAX_RECURSION_DEPTH) {
         return Color(70, 204, 255);  // Sky color
     }
 
@@ -85,7 +85,17 @@ Color castRay(const glm::vec3& orig, const glm::vec3& dir, const std::vector<Obj
     // Intensity times albedo times color for specular light (Phong reflection)
     Color specularLight = intensity * spec * hitMaterial.specularAlbedo * light.color;
 
-    return diffuseLight + specularLight;
+    // If the material is reflective, cast a reflected ray
+
+
+    Color reflectedColor(0.0f, 0.0f, 0.0f);
+    if (hitMaterial.reflectivity > 0) {
+        glm::vec3 offsetOrigin = intersect.point + intersect.normal * SHADOW_BIAS; 
+        reflectedColor = castRay(offsetOrigin, reflectDir, objects, recursion + 1);
+    }
+
+    // Final color is a mix of local shading (diffuse + specular) and reflected color
+    return (1 - hitMaterial.reflectivity) * (diffuseLight + specularLight) + hitMaterial.reflectivity * reflectedColor;
 }
 
 void pixel(glm::vec2 position, Color color) {
@@ -93,14 +103,14 @@ void pixel(glm::vec2 position, Color color) {
     SDL_RenderDrawPoint(renderer, position.x, position.y);
 }
 
-void render(const Camera& camera, std::vector<Object*>& objects) {
+void render(std::vector<Object*>& objects) {
     // This is the "simulated" up vector
     glm::vec3 simulatedUp = glm::vec3(0, 1, 0);
 
     for (int y = 0; y < SCREEN_HEIGHT; ++y) {
         for (int x = 0; x < SCREEN_WIDTH; ++x) {
-            float random_value = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
-            if (random_value > 0.9) {
+            // float random_value = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+            // if (random_value > 0.9) {
             // Map the pixel coordinate to screen space [-1, 1]
             float screenX =  (2.0f * x) / SCREEN_WIDTH - 1.0f;
             float screenY = -(2.0f * y) / SCREEN_HEIGHT + 1.0f;
@@ -122,7 +132,7 @@ void render(const Camera& camera, std::vector<Object*>& objects) {
 
             // Draw the pixel on screen with the returned color
             pixel(glm::vec2(x, y), pixelColor);
-            }
+            // }
         }
     }
 }
@@ -153,17 +163,27 @@ int main(int argc, char* args[]) {
         Color(100, 100, 80),
         0.6f,
         0.3f,
-        50.0f
+        50.0f,
+        0.2f
     );
     Material rubber(
         Color(80, 0, 0),
         0.9f,
         0.1f,
-        10.0f
+        10.0f,
+        0.0f
+    );
+    Material mirror(
+        Color(255, 255, 255),
+        0.0f,
+        10.0f,
+        1425.0f,
+        0.9f
     );
 
     std::vector<Object*> objects;
     
+    /*
     objects.push_back(
         new Sphere(
             glm::vec3(2.0f, 4.5f, -2.0f),
@@ -184,11 +204,25 @@ int main(int argc, char* args[]) {
         ));
     objects.push_back(
         new Sphere(
-            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, 3.0f),
             2.0f,
-            ivory
+            mirror
         ));
-    
+    */
+
+    objects.push_back(
+        new Sphere(
+            glm::vec3(-3.0f, 0.0f, 0.0f),
+            3.0f,
+            rubber
+        ));
+    objects.push_back(
+        new Sphere(
+            glm::vec3(3.0f, 0.0f, 0.0f),
+            2.0f,
+            mirror
+        ));
+
     int frameCount = 0;
     float elapsedTime = 0.0f;
 
@@ -202,11 +236,11 @@ int main(int argc, char* args[]) {
                     switch (event.key.keysym.sym) {
                         case SDLK_UP:
                             // Move closer to the target
-                            camera.move(-1.0f);  // You may need to adjust the value as per your needs
+                            camera.move(1.0f);  // You may need to adjust the value as per your needs
                             break;
                         case SDLK_DOWN:
                             // Move away from the target
-                            camera.move(1.0f);  // You may need to adjust the value as per your needs
+                            camera.move(-1.0f);  // You may need to adjust the value as per your needs
                             break;
                         case SDLK_a:
                             // Rotate up
@@ -238,7 +272,7 @@ int main(int argc, char* args[]) {
         dT = (currentTime - lastTime) / 1000.0f;  // Time since last frame in seconds
         lastTime = currentTime;
 
-        render(camera, objects);
+        render(objects);
 
         SDL_RenderPresent(renderer);
 

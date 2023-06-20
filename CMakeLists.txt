@@ -13,12 +13,15 @@ file(GLOB SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 # add the executable
 add_executable(RT ${SOURCE_FILES})
 
-# find and include SDL2 and GLM
+# find and include SDL2, SDL2_image, and GLM
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
+
+find_package(SDL2_image REQUIRED)
+include_directories(${SDL2_IMAGE_INCLUDE_DIRS})
 
 find_package(glm REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
 # link libraries
-target_link_libraries(RT ${SDL2_LIBRARIES} ${GLM_LIBRARIES})
+target_link_libraries(RT ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${GLM_LIBRARIES})

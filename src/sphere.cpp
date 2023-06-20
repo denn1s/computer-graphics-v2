@@ -29,6 +29,9 @@ Intersect Sphere::rayIntersect(const glm::vec3& rayOrigin, const glm::vec3& rayD
         return Intersect(); // No intersection
     } else {
         float dist = (-b - sqrt(discriminant)) / (2.0f * a);
+        if (dist < 0) {
+            return Intersect();
+        }
         glm::vec3 point = rayOrigin + dist * rayDirection;
         glm::vec3 normal = glm::normalize(point - center);
         return Intersect(point, normal, dist);

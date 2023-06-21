@@ -1,6 +1,9 @@
 #include <map>
 #include <iostream>
-#include <SDL2/SDL.h>
+
+#include "glad.h"
+#include <GLFW/glfw3.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -8,54 +11,33 @@
 #include <array>
 #include <unordered_map>
 
-#include "glad.h"
+
 #include "shaders.h"
 #include "ObjLoader.h"
 #include "MtlLoader.h"
 
-bool init(SDL_Window*& window, SDL_GLContext& context) {
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
 
-    // Initialize SDL's video subsystem.
-    // SDL_Init will return -1 if it fails to initialize.
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
-        return false;
-    }
+bool init(GLFWwindow*& window) {
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Create an application window with the following settings:
-    window = SDL_CreateWindow(
-        "OpenGL",               // window title
-        SDL_WINDOWPOS_CENTERED, // initial x position
-        SDL_WINDOWPOS_CENTERED, // initial y position
-        800,                    // width, in pixels
-        600,                    // height, in pixels
-        SDL_WINDOW_OPENGL       // flags - set to use OpenGL
-    );
+     // glfw window creation
+    // --------------------
+    window = glfwCreateWindow(800, 600, "opengl", NULL, NULL);
+    glfwMakeContextCurrent(window);
 
-    // Check that the window was successfully created
-    if (window == NULL) {
-        // In the case that the window could not be made...
-        std::cerr << "Could not create window: " << SDL_GetError() << std::endl;
-        return false;
-    }
-
-    // We want to request that SDL creates a OpenGL context for our window.
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); // Request OpenGL 3.3
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3); // Request OpenGL 3.3
-
-    // Create an OpenGL context associated with the window.
-    context = SDL_GL_CreateContext(window);
-
-    // glad
-    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
+        // glad: load all OpenGL function pointers
+    // ---------------------------------------
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        // Failed to initialize GLAD
-        std::cout << "Failed to load glad" << std::endl;
+        std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
-    }
-
-    glEnable(GL_DEPTH_TEST);
-
+    }   
     return true;
 }
 
@@ -172,19 +154,36 @@ GLuint setupShaders(const char* vertexSource, const char* fragmentSource) {
     return shaderProgram;
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    float cameraSpeed = 0.5f; // adjust accordingly
+    if (action == GLFW_PRESS || action == GLFW_REPEAT) {
+        switch (key) {
+            case GLFW_KEY_W:
+                cameraPos += cameraSpeed * cameraFront;
+                break;
+            case GLFW_KEY_S:
+                cameraPos -= cameraSpeed * cameraFront;
+                break;
+            case GLFW_KEY_A:
+                cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+                break;
+            case GLFW_KEY_D:
+                cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+                break;
+        }
+    }
+}
+
+
 int main() {
 
     // The window we'll be rendering to
-    SDL_Window* window = nullptr;
+    GLFWwindow* window = nullptr;
 
-    // OpenGL context
-    SDL_GLContext context;
 
-    // Initialize SDL and OpenGL
-    if (!init(window, context)) {
-        std::cerr << "Failed to initialize!" << std::endl;
-        return EXIT_FAILURE;
-    }
+    // Initialize glfw and OpenGL
+    init(window);
 
     // Setup shaders
     GLuint shaderProgram = setupShaders(vertexShaderSource, fragmentShaderSource);
@@ -211,47 +210,21 @@ int main() {
     );
         
     // Setup time related variables
-    Uint32 currentTime = SDL_GetTicks();
-    Uint32 lastTime = 0;
+    float currentTime = glfwGetTime();
+    float lastTime = 0;
     float deltaTime = 0.0f;
 
     float rotateAngle = 0.0f;
 
-    glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
-    glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
+    glEnable(GL_DEPTH_TEST);
+    glfwSetKeyCallback(window, key_callback);
 
     // Main loop
-    bool running = true;
-    while (running) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                running = false;
-            }
-            if (event.type == SDL_KEYDOWN) {
-                float cameraSpeed = 0.5f; // adjust accordingly
-                switch (event.key.keysym.sym) {
-                    case SDLK_w:
-                        cameraPos += cameraSpeed * cameraFront;
-                        break;
-                    case SDLK_s:
-                        cameraPos -= cameraSpeed * cameraFront;
-                        break;
-                    case SDLK_a:
-                        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-                        break;
-                    case SDLK_d:
-                        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-                        break;
-                }
-            }
-        }
-
+    while (!glfwWindowShouldClose(window)) {
         // Calculate delta time
+        currentTime = glfwGetTime();
+        deltaTime = currentTime - lastTime;
         lastTime = currentTime;
-        currentTime = SDL_GetTicks();
-        deltaTime = (currentTime - lastTime) / 1000.0f;
 
         // Clear the screen to black
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -298,15 +271,15 @@ int main() {
         glBindVertexArray(0);
 
         // Swap buffers
-        SDL_GL_SwapWindow(window);
+        glfwSwapBuffers(window);
+        glfwPollEvents();
     }
 
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
     glDeleteProgram(shaderProgram);
-    SDL_GL_DeleteContext(context);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    glfwDestroyWindow(window);
+    glfwTerminate();
 
     return 0;
 }

@@ -8,6 +8,8 @@
 #include <iostream>
 #include <vector>
 #include <cstdlib>
+#include <algorithm>
+#include <execution>
 
 #include "skybox.h"
 #include "light.h"
@@ -21,8 +23,8 @@
 #define SCREEN_HEIGHT 600
 
 SDL_Renderer* renderer = nullptr;
-Light light(glm::vec3(0.0f, 0.0f, -20.0f), 1.5f, Color(255, 255, 255));
-Camera camera(glm::vec3(0.0f, 0.0f, -20.0f), glm::vec3(0.0f, 0.0f, 0.0f), 10.0f);
+Light light(glm::vec3(20.0f, 0.0f, 0.0f), 1.5f, Color(255, 255, 255));
+Camera camera(glm::vec3(-20.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), 10.0f);
 Skybox skybox("./textures/skybox.jpg");
 
 float castShadow(const glm::vec3& shadowOrig, const glm::vec3& lightDir, const std::vector<Object*>& objects, Object* hitObject) {
@@ -112,11 +114,59 @@ void pixel(glm::vec2 position, Color color) {
     SDL_RenderDrawPoint(renderer, position.x, position.y);
 }
 
+void renderFromBuffer(const std::array<std::array<Color, SCREEN_WIDTH>, SCREEN_HEIGHT>& pixels)
+{
+    int textureWidth = SCREEN_WIDTH;
+    int textureHeight = SCREEN_HEIGHT;
+
+    // Create a texture with the desired size and format
+    SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, textureWidth, textureHeight);
+
+    // Lock the texture to gain access to its pixel data
+    void* texturePixels;
+    int pitch;
+    SDL_LockTexture(texture, NULL, &texturePixels, &pitch);
+
+
+    Uint32 format = SDL_PIXELFORMAT_ARGB8888;
+    SDL_PixelFormat* mappingFormat = SDL_AllocFormat(format);
+
+    // Copy the pixel data from the buffer to the texture pixel data
+    Uint32* texturePixels32 = static_cast<Uint32*>(texturePixels);
+    for (int y = 0; y < textureHeight; y++) {
+        for (int x = 0; x < textureWidth; x++) {
+            // Calculate the index in the pixel data corresponding to the current point
+            int index = y * (pitch / sizeof(Uint32)) + x;
+
+            // Get the color of the current point from the buffer
+            const Color& color = pixels[y][x];
+
+            // Set the color of the point directly in the texture pixel data
+            texturePixels32[index] = SDL_MapRGBA(mappingFormat, color.r, color.g, color.b, color.a);
+        }
+    }
+
+    // Unlock the texture to finalize the changes
+    SDL_UnlockTexture(texture);
+
+    // Render the texture
+    SDL_Rect textureRect = {0, 0, textureWidth, textureHeight};
+    SDL_RenderCopy(renderer, texture, NULL, &textureRect);
+
+    // Destroy the texture when no longer needed
+    SDL_DestroyTexture(texture);
+}
+
 void render(std::vector<Object*>& objects) {
     // This is the "simulated" up vector
     glm::vec3 simulatedUp = glm::vec3(0, 1, 0);
 
-    for (int y = 0; y < SCREEN_HEIGHT; ++y) {
+    std::vector<int> rows(SCREEN_HEIGHT);
+    std::iota(rows.begin(), rows.end(), 0);  // Fill it with 0, 1, ..., SCREEN_HEIGHT-1
+    std::array<std::array<Color, SCREEN_WIDTH>, SCREEN_HEIGHT> pixels;
+
+    std::for_each(std::execution::par, rows.begin(), rows.end(), [&](int y) {
+    // for (int y = 0; y < SCREEN_HEIGHT; ++y) {
         for (int x = 0; x < SCREEN_WIDTH; ++x) {
             // float random_value = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
             // if (random_value > 0.8) {
@@ -140,12 +190,61 @@ void render(std::vector<Object*>& objects) {
             Color pixelColor = castRay(camera.position, glm::normalize(dir), objects);
 
             // Draw the pixel on screen with the returned color
-            pixel(glm::vec2(x, y), pixelColor);
+            // pixel(glm::vec2(x, y), pixelColor);
             // }
+            // std::lock_guard<std::mutex> lock(pixelsMutex);
+            // pixel(glm::vec2(x, y), pixelColor);
+            pixels[y][x] = pixelColor;
         }
+    });
+    // }
+    renderFromBuffer(pixels);
+}
+
+void handleKeyPress(SDL_Keycode key) {
+    switch (key) {
+        case SDLK_UP:
+            // Move closer to the target
+            camera.move(-1.0f); // You may need to adjust the value as per your needs
+            break;
+        case SDLK_DOWN:
+            // Move away from the target
+            camera.move(1.0f); // You may need to adjust the value as per your needs
+            break;
+        case SDLK_a:
+            // Rotate up
+            camera.rotate(-1.0f, 0.0f); // You may need to adjust the value as per your needs
+            break;
+        case SDLK_d:
+            // Rotate down
+            camera.rotate(1.0f, 0.0f); // You may need to adjust the value as per your needs
+            break;
+        case SDLK_w:
+            // Rotate left
+            camera.rotate(0.0f, -1.0f); // You may need to adjust the value as per your needs
+            break;
+        case SDLK_s:
+            // Rotate right
+            camera.rotate(0.0f, 1.0f); // You may need to adjust the value as per your needs
+            break;
+        default:
+            break;
     }
 }
 
+void processKeyEvents(const SDL_Event& event, std::unordered_map<SDL_Keycode, bool>& keyStates) {
+    switch (event.type) {
+        case SDL_KEYDOWN:
+            handleKeyPress(event.key.keysym.sym);
+            keyStates[event.key.keysym.sym] = true;
+            break;
+        case SDL_KEYUP:
+            keyStates[event.key.keysym.sym] = false;
+            break;
+        default:
+            break;
+    }
+}
 
 
 int main(int argc, char* args[]) {
@@ -249,41 +348,17 @@ int main(int argc, char* args[]) {
     int frameCount = 0;
     float elapsedTime = 0.0f;
 
+    std::unordered_map<SDL_Keycode, bool> keyStates;
+
     while (isRunning) {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
                     isRunning = false;
                     break;
-                case SDL_KEYDOWN:
-                    switch (event.key.keysym.sym) {
-                        case SDLK_UP:
-                            // Move closer to the target
-                            camera.move(-1.0f);  // You may need to adjust the value as per your needs
-                            break;
-                        case SDLK_DOWN:
-                            // Move away from the target
-                            camera.move(1.0f);  // You may need to adjust the value as per your needs
-                            break;
-                        case SDLK_a:
-                            // Rotate up
-                            camera.rotate(-1.0f, 0.0f);  // You may need to adjust the value as per your needs
-                            break;
-                        case SDLK_d:
-                            // Rotate down
-                            camera.rotate(1.0f, 0.0f);  // You may need to adjust the value as per your needs
-                            break;
-                        case SDLK_w:
-                            // Rotate left
-                            camera.rotate(0.0f, -1.0f);  // You may need to adjust the value as per your needs
-                            break;
-                        case SDLK_s:
-                            // Rotate right
-                            camera.rotate(0.0f, 1.0f);  // You may need to adjust the value as per your needs
-                            break;
-                        default:
-                            break;
-                    }
+                default:
+                    processKeyEvents(event, keyStates);
+                    break;
             }
         }
 

@@ -20,5 +20,10 @@ include_directories(${SDL2_INCLUDE_DIRS})
 find_package(glm REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
+# threading
+
+find_package(TBB REQUIRED)
+target_link_libraries(${PROJECT_NAME} TBB::tbb)
+
 # link libraries
 target_link_libraries(RT ${SDL2_LIBRARIES} SDL2_image ${GLM_LIBRARIES})

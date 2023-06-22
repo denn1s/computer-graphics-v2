@@ -1,7 +1,7 @@
 #pragma once
 
 const char* vertexShaderSource = R"(
-    #version 330 core
+    #version 410 core
 
     layout (location = 0) in vec3 in_position;
     layout (location = 1) in vec3 in_normal;
@@ -25,7 +25,7 @@ const char* vertexShaderSource = R"(
 )";
 
 const char* fragmentShaderSource = R"(
-    #version 330 core
+    #version 410 core
 
     in vec3 Normal;
     in vec3 FragPos;

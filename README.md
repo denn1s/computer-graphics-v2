@@ -1,24 +1,34 @@
-Color struct: Represents a color with its RGB values. It has three properties: red, blue, and green.
+# Software Renderer (SR)
 
-Renderer class: Encapsulates the rendering functionality. It holds the width and height of the rendering area and a framebuffer to store pixel data.
+SR is a simple C++ project that demonstrates the use of C++20 features and the GLM library. The main goal of this project is to serve as a starting point for a software renderer. At this stage, it prints a "Hello, World!" message along with a `glm::vec3` and a `glm::mat4`.
 
-V2 struct: Represents a 2D vertex with x and y integer coordinates.
+## Contents
 
-clear function: Clears the framebuffer with a specified color. It iterates through each pixel in the framebuffer and sets its color values to match the specified color.
+- `src/main.cpp`: The main file that includes the `print.h` header and uses the `print` function to display the "Hello, World!" message, a `glm::vec3`, and a `glm::mat4`.
+- `src/print.h`: A header file that contains overloaded `print` functions for different types, including `glm::vec3` and `glm::mat4`. It also provides a variadic template `print` function.
 
-point function: Draws a point (pixel) on the framebuffer at the given coordinates with the specified color.
+## How to Compile and Run
 
-line function: Draws a line on the framebuffer between two points using the Bresenham's line algorithm. It calculates the line's slope, determines the steps, and increments the coordinates to draw pixels along the line.
+1. Ensure you have the required dependencies installed: `glm` library.
+2. Create a build directory and navigate to it:
 
-writeBMP function: Writes the framebuffer data to a BMP image file. It constructs the necessary BMP file headers and writes the pixel data to the file.
+   ```bash
+   mkdir build
+   cd build
+   ```
 
-render function: Performs the rendering process. It clears the framebuffer, draws a point at the center, and draws a line from the start to the end coordinates.
+3. Generate the build system using CMake and compile the program:
 
-main function: The entry point of the program. It creates a Renderer object, calls the render function, and writes the resulting framebuffer to a BMP image file.
+   ```bash
+   cmake ..
+   make
+   ```
 
+4. Run the compiled executable:
 
------
+   ```bash
+   ./SR
+   ```
 
-static_cast: This is a safe and commonly used casting operator that performs compile-time type checking. It is used to convert one type to another when a valid conversion exists between the two types. It is typically used for implicit conversions, such as converting between numeric types or upcasting/downcasting in inheritance hierarchies. In the code, static_cast is used to convert pointers to unsigned char arrays to int pointers for the purpose of setting certain values in the BMP file headers. It is used to ensure type safety during these conversions.
+The output should display the "Hello, World!" message along with a `glm::vec3` and a `glm::mat4`.
 
-reinterpret_cast: This is a powerful casting operator that allows for low-level reinterpretation of data. It is used to convert one pointer type to another unrelated pointer type, or to convert a pointer to an integral type and vice versa. It is considered an unsafe cast because it bypasses some of the type checking done by the compiler. In the code, reinterpret_cast is used to convert pointers to unsigned char arrays to char arrays for writing data to the BMP file. It is used because the BMP file format expects data to be written as char arrays, and reinterpret_cast allows for this reinterpretation of pointer types.

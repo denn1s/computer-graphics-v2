@@ -38,8 +38,8 @@ void point(int x, int y) {
 
 void point(float x, float y) {
     point(
-        static_cast<int>(std::round(x)),
-        static_cast<int>(std::round(y))
+        static_cast<int>(x),
+        static_cast<int>(y)
     );
 }
 

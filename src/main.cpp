@@ -1,9 +1,10 @@
 #include <SDL2/SDL.h>
 #include <iostream>
+#include <glm/glm.hpp>
+#include <vector>
 #include "color.h"
 #include "framebuffer.h"
 
-Framebuffer framebuffer;
 SDL_Window* window = nullptr;
 SDL_Renderer* renderer = nullptr;
 Color currentColor;
@@ -29,9 +30,9 @@ bool init() {
     return true;
 }
 
-void point(int x, int y, const Color& color) {
-    if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
-        framebuffer[y][x] = color;
+void point(glm::ivec2 p) {
+    if (p.x >= 0 && p.x < SCREEN_WIDTH && p.y >= 0 && p.y < SCREEN_HEIGHT) {
+        framebuffer[p.y][p.x] = currentColor;
     }
 }
 
@@ -127,7 +128,7 @@ int main(int argc, char* argv[]) {
         setColor(Color(255, 255, 0));
         drawTriangles(vertices);
 
-        SDL_RenderPresent(renderer);
+        renderBuffer(renderer);
     }
 
     SDL_DestroyRenderer(renderer);

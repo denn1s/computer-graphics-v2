@@ -4,9 +4,9 @@
 #include "framebuffer.h"
 
 Framebuffer framebuffer;
-
 SDL_Window* window = nullptr;
 SDL_Renderer* renderer = nullptr;
+Color currentColor;
 
 bool init() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -35,37 +35,82 @@ void point(int x, int y, const Color& color) {
     }
 }
 
-void renderBuffer(int textureWidth, int textureHeight) {
-    SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, textureWidth, textureHeight);
+// Initialization function, point function, and other helper functions go here
 
-    void* texturePixels;
-    int pitch;
-    SDL_LockTexture(texture, NULL, &texturePixels, &pitch);
+void setColor(const Color& color) {
+    currentColor = color;
+}
 
-    Uint32 format = SDL_PIXELFORMAT_ARGB8888;
-    SDL_PixelFormat* mappingFormat = SDL_AllocFormat(format);
+void line(glm::ivec2 p1, glm::ivec2 p2) {
+    // Calculate the absolute difference between the x and y coordinates of the two points
+    int dx = abs(p2.x - p1.x);
+    int dy = abs(p2.y - p1.y);
 
-    Uint32* texturePixels32 = static_cast<Uint32*>(texturePixels);
-    for (int y = 0; y < textureHeight; y++) {
-        for (int x = 0; x < textureWidth; x++) {
-            int index = y * (pitch / sizeof(Uint32)) + x;
-            const Color& color = framebuffer[y][x];
-            texturePixels32[index] = SDL_MapRGBA(mappingFormat, color.r, color.g, color.b, color.a);
+    // Initialize the starting point (x, y) as the first point (p1)
+    int x = p1.x;
+    int y = p1.y;
+
+    // Determine the step direction for x and y based on the relative positions of p1 and p2
+    int x_step = (p1.x < p2.x) ? 1 : -1;
+    int y_step = (p1.y < p2.y) ? 1 : -1;
+
+    // Calculate the initial error value, which is half of the major axis (dx or dy)
+    int err = (dx > dy ? dx : -dy) / 2;
+    int e2;
+
+    // Iterate until the end point (p2) is reached
+    while (true) {
+        // Draw a pixel at the current position (x, y)
+        point(glm::ivec2(x, y));
+
+        // If the current position (x, y) matches the end point (p2), break the loop
+        if (x == p2.x && y == p2.y) {
+            break;
+        }
+
+        // Store the current error value in e2
+        e2 = err;
+
+        // Update the x coordinate and the error value if needed
+        if (e2 > -dx) {
+            err -= dy;
+            x += x_step;
+        }
+
+        // Update the y coordinate and the error value if needed
+        if (e2 < dy) {
+            err += dx;
+            y += y_step;
         }
     }
+}
+void triangle(glm::ivec2 A, glm::ivec2 B, glm::ivec2 C) {
+    line(A, B);
+    line(B, C);
+    line(C, A);
+}
 
-    SDL_UnlockTexture(texture);
-    SDL_Rect textureRect = {0, 0, textureWidth, textureHeight};
-    SDL_RenderCopy(renderer, texture, NULL, &textureRect);
-    SDL_DestroyTexture(texture);
+void drawTriangles(const std::vector<glm::ivec2>& vertices) {
+    if (vertices.size() % 3 != 0) {
+        std::cerr << "Error: The vertices vector must contain a multiple of 3 elements" << std::endl;
+        return;
+    }
 
-    SDL_RenderPresent(renderer);
+    for (size_t i = 0; i < vertices.size(); i += 3) {
+        triangle(vertices[i], vertices[i + 1], vertices[i + 2]);
+    }
 }
 
 int main(int argc, char* argv[]) {
     if (!init()) {
         return 1;
     }
+
+    std::vector<glm::ivec2> vertices = {
+        {300, 200},
+        {400, 400},
+        {500, 200}
+    };
 
     bool running = true;
     while (running) {
@@ -76,9 +121,13 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        point(400, 300, Color(255, 0, 0));
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
 
-        renderBuffer(SCREEN_WIDTH, SCREEN_HEIGHT);
+        setColor(Color(255, 255, 0));
+        drawTriangles(vertices);
+
+        SDL_RenderPresent(renderer);
     }
 
     SDL_DestroyRenderer(renderer);

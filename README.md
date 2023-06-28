@@ -27,3 +27,25 @@ Video memory, also known as VRAM (Video Random Access Memory), is a special type
 The framebuffer is stored in video memory, as it needs to be quickly accessible by the GPU for rendering. When a frame is ready to be displayed, the GPU reads the contents of the framebuffer and sends the pixel data to the display device, which then renders the image on the screen. The process of reading from the framebuffer and displaying the image is called a "buffer swap" or "frame swap".
 
 In our example, the framebuffer is stored in system memory and is later copied to video memory when creating an SDL texture. This allows us to modify the framebuffer contents directly in system memory before updating the screen. However, modern graphics APIs such as OpenGL and Direct3D often store framebuffers directly in video memory for better performance.
+
+## Excercises
+
+Here are some simple exercises to familiarize with the framebuffer.
+
+1. **Draw a line**: Create a function that takes two points (x1, y1) and (x2, y2) as input and draws a straight line between them on the framebuffer using a specified color. Students can learn about line drawing algorithms like Bresenham's or DDA.
+
+2. **Draw a rectangle**: Create a function that takes the top-left corner coordinates (x, y), width, height, and a color as input, and draws a filled or outlined rectangle on the framebuffer.
+
+3. **Draw a circle**: Create a function that takes the center coordinates (x, y), radius, and a color as input, and draws a filled or outlined circle on the framebuffer. Students can learn about the Midpoint Circle Algorithm.
+
+4. **Flood fill**: Implement a flood fill algorithm that takes a starting point (x, y) and a target color as input, and fills an enclosed area with the target color. Students can explore recursive and iterative implementations (e.g. using a queue).
+
+5. **Simple shapes**: Create a function that takes a set of vertices, and draws a polygon (e.g., triangle, hexagon) on the framebuffer by connecting the vertices with lines.
+
+6. **Pattern generation**: Create functions that generate simple patterns on the framebuffer, such as checkerboards, stripes, or radial gradients.
+
+7. **Image loading**: Load an image file (e.g., PNG or BMP) and display it on the framebuffer. Students can learn about file formats, file I/O, and image decoding.
+
+8. **Basic animation**: Create a simple animation by updating the framebuffer in a loop, such as a bouncing ball, a moving line, or a rotating shape.
+
+9. **User interaction**: Add keyboard or mouse input to control elements on the framebuffer, such as moving a shape, changing colors, or toggling the visibility of elements.

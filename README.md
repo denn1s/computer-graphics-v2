@@ -1,29 +1,55 @@
-# Framebuffer and SDL Example
+# README.md
 
-This repository contains a simple example of using a framebuffer and the Simple DirectMedia Layer (SDL) library to draw points on a screen.
+## Table of Contents
 
-## Framebuffer
+1. [Introduction to Lines](#introduction-to-lines)
+2. [Bresenham's Line Algorithm](#bresenhams-line-algorithm)
+3. [DDA Line Algorithm](#dda-line-algorithm)
+4. [Triangles in Computer Graphics](#triangles-in-computer-graphics)
+5. [Triangulation in Computer Graphics](#triangulation-in-computer-graphics)
 
-A framebuffer is a memory buffer containing a complete frame of pixel data, which can be sent to a display device to be rendered on the screen. It stores the color information for each pixel on the screen, usually in a two-dimensional array. Framebuffers are commonly used in computer graphics to draw shapes, apply shading, perform transformations, and manipulate images before displaying them on the screen.
+## Introduction to Lines
 
-In our example, we use a `Framebuffer` class that encapsulates a two-dimensional array of `Color` objects. This framebuffer is used to store color information for each pixel on the screen, and it is updated whenever we draw points or other shapes.
+A line is a straight one-dimensional figure that extends infinitely in both directions. In geometry, a line can be represented by its equation, which is given by:
 
-## SDL (Simple DirectMedia Layer)
+y = mx + b
 
-SDL is a cross-platform development library that provides low-level access to audio, keyboard, mouse, joystick, and graphics hardware via OpenGL and Direct3D. It is widely used in game development, multimedia applications, and emulators.
+Where `m` is the slope of the line, `b` is the y-intercept, and `x` and `y` are the coordinates of any point on the line.
 
-In our example, we use SDL to create a window, initialize a renderer, and handle events such as window closing. We also use SDL to render the contents of our framebuffer to the screen.
+## Bresenham's Line Algorithm
 
-## Using SDL to Draw on the Screen
+Bresenham's Line Algorithm is an efficient method for drawing lines on a raster grid, such as a computer screen. The algorithm uses integer arithmetic to calculate the points that should be drawn to create a straight line between two given points. This approach minimizes rounding errors and is faster than algorithms that use floating-point arithmetic.
 
-In the example, we create a simple application that uses a framebuffer to draw points on the screen. We initialize SDL, create a window and renderer, and update the framebuffer with pixel colors. We then create a texture from the framebuffer data and render it to the screen using the SDL renderer.
+## DDA Line Algorithm
 
-In an alternative version of the example, we use SDL's built-in `SDL_RenderDrawPoint` function to draw points directly on the renderer without using a framebuffer. However, this approach may result in slower performance when drawing a large number of points.
+The Digital Differential Analyzer (DDA) Line Algorithm is another method for drawing lines on a raster grid. The algorithm calculates the slope of the line and uses it to incrementally determine the points that should be drawn. Unlike Bresenham's algorithm, the DDA algorithm uses floating-point arithmetic, which can be slower and less precise.
 
-## Video Memory and Framebuffer
+## Triangles in Computer Graphics
 
-Video memory, also known as VRAM (Video Random Access Memory), is a special type of memory used by graphics processing units (GPUs) to store image data and other information needed for rendering graphics. Video memory is separate from the main system memory (RAM) and is typically faster and optimized for graphics operations.
+Triangles are a fundamental building block in computer graphics because they are the simplest convex polygon that can be used to approximate more complex shapes. Triangles are preferred over other shapes because they can be easily rasterized and transformed using linear algebra operations. Additionally, any polygon can be decomposed into a set of triangles, making them a versatile and efficient representation for complex geometry.
 
-The framebuffer is stored in video memory, as it needs to be quickly accessible by the GPU for rendering. When a frame is ready to be displayed, the GPU reads the contents of the framebuffer and sends the pixel data to the display device, which then renders the image on the screen. The process of reading from the framebuffer and displaying the image is called a "buffer swap" or "frame swap".
+## Triangulation in Computer Graphics
 
-In our example, the framebuffer is stored in system memory and is later copied to video memory when creating an SDL texture. This allows us to modify the framebuffer contents directly in system memory before updating the screen. However, modern graphics APIs such as OpenGL and Direct3D often store framebuffers directly in video memory for better performance.
+Triangulation is the process of breaking down a complex shape or surface into a set of triangles. This process is essential in computer graphics because it allows for efficient rendering and manipulation of complex models. Triangulation is used in various applications, such as 3D modeling, terrain rendering, and physics simulations. By decomposing a shape into triangles, computer graphics algorithms can take advantage of the simplicity and efficiency of working with triangles to perform complex operations on more intricate shapes.
+
+## Excersises 
+
+Square and "fake" cube: Students can start by drawing a square and a "fake" cube using lines and triangles. They can experiment with different sizes and positions for these shapes.
+
+Grid of lines: Have the students draw a grid made up of horizontal and vertical lines. They can vary the number of rows and columns and the spacing between them.
+
+Regular polygons: Have the students draw regular polygons like an equilateral triangle, pentagon, hexagon, etc. They can calculate the vertices of these polygons and use the line or triangle functions to draw them.
+
+Pattern of triangles: Have the students create a pattern of triangles by drawing multiple triangles in a row, column, or a grid. They can alter the size, orientation, and spacing of the triangles to create interesting patterns.
+
+Star shapes: Have the students draw star shapes using lines or triangles. They can vary the number of points and the length of the lines to create different star patterns.
+
+Spirograph-like patterns: Have the students draw spirograph-like patterns using lines or triangles. They can experiment with the parameters of the spirograph equations to create intricate designs.
+
+Fractal patterns: Have the students draw simple fractal patterns such as the Sierpinski triangle or the Koch snowflake using lines or triangles. These patterns can be generated iteratively by applying simple geometric transformations.
+
+Animating shapes: Have the students animate the shapes they've drawn by changing their position, size, or orientation over time. They can use a timer or a loop to update the shapes and redraw them at each frame.
+
+Interacting with shapes: Have the students write a program that allows them to interact with the shapes they've drawn. They can use mouse clicks or keyboard input to select, move, resize, or change the color of the shapes.
+
+Creating a simple drawing tool: Have the students create a simple drawing tool that allows them to draw lines, triangles, squares, and other shapes on a canvas. They can use mouse input to draw the shapes and keyboard input to switch between different drawing modes or colors.

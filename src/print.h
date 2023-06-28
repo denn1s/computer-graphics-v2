@@ -3,7 +3,7 @@
 
 // overload for glm::vec3
 void print(const glm::vec3& v) {
-    std::cout << "glm::vec3(" << v.x << ", " << v.y << ", " << v.z << ")";
+    std::cout << "glm::vec3(" << v.x << ", " << v.y << ", " << v.z << ")" << std::endl;
 }
 
 // overload for glm::mat4
@@ -19,7 +19,7 @@ void print(const glm::mat4& m) {
         }
         std::cout << (i == 3 ? "\n" : ",\n");
     }
-    std::cout << ")";
+    std::cout << ")" << std::endl;
 }
 
 // base case function to end the recursion, using abbreviated template syntax

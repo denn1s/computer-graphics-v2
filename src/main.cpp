@@ -30,10 +30,17 @@ bool init() {
     return true;
 }
 
-void point(glm::ivec2 p) {
-    if (p.x >= 0 && p.x < SCREEN_WIDTH && p.y >= 0 && p.y < SCREEN_HEIGHT) {
-        framebuffer[p.y][p.x] = currentColor;
+void point(int x, int y) {
+    if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
+        framebuffer[y][x] = currentColor;
     }
+}
+
+void point(float x, float y) {
+    point(
+        static_cast<int>(std::round(x)),
+        static_cast<int>(std::round(y))
+    );
 }
 
 // Initialization function, point function, and other helper functions go here
@@ -42,7 +49,7 @@ void setColor(const Color& color) {
     currentColor = color;
 }
 
-void line(glm::ivec2 p1, glm::ivec2 p2) {
+void line(glm::vec3 p1, glm::vec3 p2) {
     // Calculate the absolute difference between the x and y coordinates of the two points
     int dx = abs(p2.x - p1.x);
     int dy = abs(p2.y - p1.y);
@@ -62,7 +69,7 @@ void line(glm::ivec2 p1, glm::ivec2 p2) {
     // Iterate until the end point (p2) is reached
     while (true) {
         // Draw a pixel at the current position (x, y)
-        point(glm::ivec2(x, y));
+        point(x, y);
 
         // If the current position (x, y) matches the end point (p2), break the loop
         if (x == p2.x && y == p2.y) {
@@ -85,13 +92,13 @@ void line(glm::ivec2 p1, glm::ivec2 p2) {
         }
     }
 }
-void triangle(glm::ivec2 A, glm::ivec2 B, glm::ivec2 C) {
+void triangle(glm::vec3 A, glm::vec3 B, glm::vec3 C) {
     line(A, B);
     line(B, C);
     line(C, A);
 }
 
-void drawTriangles(const std::vector<glm::ivec2>& vertices) {
+void drawTriangles(const std::vector<glm::vec3>& vertices) {
     if (vertices.size() % 3 != 0) {
         std::cerr << "Error: The vertices vector must contain a multiple of 3 elements" << std::endl;
         return;
@@ -107,10 +114,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::vector<glm::ivec2> vertices = {
-        {300, 200},
-        {400, 400},
-        {500, 200}
+    std::vector<glm::vec3> vertices = {
+        {300.0f, 200.0f, 0.0f},
+        {400.0f, 400.0f, 0.0f},
+        {500.0f, 200.0f, 0.0f}
     };
 
     bool running = true;

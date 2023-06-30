@@ -1,9 +1,27 @@
 #include <glm/glm.hpp>
 #include <iostream>
+#include "color.h"
 
 // overload for glm::vec3
 void print(const glm::vec3& v) {
     std::cout << "glm::vec3(" << v.x << ", " << v.y << ", " << v.z << ")" << std::endl;
+}
+
+// overload for glm::ivec2
+void print(const glm::ivec2& v) {
+    std::cout << "glm::vec2(" << v.x << ", " << v.y << ")" << std::endl;
+}
+
+// overload for Color
+void print(const Color& c) {
+    std::cout << "Color("
+        << static_cast<int>(c.r) 
+        << ", "
+        << static_cast<int>(c.g) 
+        << ", "
+        << static_cast<int>(c.b) 
+        << ")"
+    << std::endl;
 }
 
 // overload for glm::mat4

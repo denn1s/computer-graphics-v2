@@ -32,9 +32,6 @@ struct Color {
         );
     }
 
-    // Declare the << operator to print colors
-    friend std::ostream& operator<<(std::ostream& os, const Color& color);
-
     // Friend function to allow float * Color
     friend Color operator*(float factor, const Color& color);
 };

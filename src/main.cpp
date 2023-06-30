@@ -2,12 +2,24 @@
 #include <iostream>
 #include <glm/glm.hpp>
 #include <vector>
+#include <cassert>
 #include "color.h"
+#include "print.h"
 #include "framebuffer.h"
+#include "uniforms.h"
+#include "shaders.h"
+#include "fragment.h"
+#include "triangle.h"
+
 
 SDL_Window* window = nullptr;
 SDL_Renderer* renderer = nullptr;
 Color currentColor;
+
+enum class Primitive {
+    TRIANGLES,
+    // Add more primitive types here (e.g., SQUARES, LINES, etc.)
+};
 
 bool init() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -30,82 +42,78 @@ bool init() {
     return true;
 }
 
-void point(int x, int y) {
-    if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
-        framebuffer[y][x] = currentColor;
-    }
-}
-
-void point(float x, float y) {
-    point(
-        static_cast<int>(x),
-        static_cast<int>(y)
-    );
-}
-
-// Initialization function, point function, and other helper functions go here
-
 void setColor(const Color& color) {
     currentColor = color;
 }
 
-void line(glm::vec3 p1, glm::vec3 p2) {
-    // Calculate the absolute difference between the x and y coordinates of the two points
-    int dx = abs(p2.x - p1.x);
-    int dy = abs(p2.y - p1.y);
+std::vector<std::vector<glm::vec3>> primitiveAssembly(
+    Primitive polygon,
+    const std::vector<glm::vec3>& transformedVertices
+) {
+    std::vector<std::vector<glm::vec3>> assembledVertices;
 
-    // Initialize the starting point (x, y) as the first point (p1)
-    int x = p1.x;
-    int y = p1.y;
+    switch (polygon) {
+        case Primitive::TRIANGLES: {
+            assert(transformedVertices.size() % 3 == 0 && "The number of vertices must be a multiple of 3 for triangles.");
 
-    // Determine the step direction for x and y based on the relative positions of p1 and p2
-    int x_step = (p1.x < p2.x) ? 1 : -1;
-    int y_step = (p1.y < p2.y) ? 1 : -1;
-
-    // Calculate the initial error value, which is half of the major axis (dx or dy)
-    int err = (dx > dy ? dx : -dy) / 2;
-    int e2;
-
-    // Iterate until the end point (p2) is reached
-    while (true) {
-        // Draw a pixel at the current position (x, y)
-        point(x, y);
-
-        // If the current position (x, y) matches the end point (p2), break the loop
-        if (x == p2.x && y == p2.y) {
+            for (size_t i = 0; i < transformedVertices.size(); i += 3) {
+                std::vector<glm::vec3> triangle = {
+                    transformedVertices[i],
+                    transformedVertices[i + 1],
+                    transformedVertices[i + 2]
+                };
+                assembledVertices.push_back(triangle);
+            }
             break;
         }
-
-        // Store the current error value in e2
-        e2 = err;
-
-        // Update the x coordinate and the error value if needed
-        if (e2 > -dx) {
-            err -= dy;
-            x += x_step;
-        }
-
-        // Update the y coordinate and the error value if needed
-        if (e2 < dy) {
-            err += dx;
-            y += y_step;
-        }
-    }
-}
-void triangle(glm::vec3 A, glm::vec3 B, glm::vec3 C) {
-    line(A, B);
-    line(B, C);
-    line(C, A);
-}
-
-void drawTriangles(const std::vector<glm::vec3>& vertices) {
-    if (vertices.size() % 3 != 0) {
-        std::cerr << "Error: The vertices vector must contain a multiple of 3 elements" << std::endl;
-        return;
+        // Add more cases for other primitive types here
+        default:
+            std::cerr << "Error: Unsupported primitive type." << std::endl;
+            break;
     }
 
-    for (size_t i = 0; i < vertices.size(); i += 3) {
-        triangle(vertices[i], vertices[i + 1], vertices[i + 2]);
+    return assembledVertices;
+}
+
+std::vector<Fragment> rasterize(Primitive primitive, const std::vector<std::vector<glm::vec3>>& assembledVertices) {
+    std::vector<Fragment> fragments;
+
+    switch (primitive) {
+        case Primitive::TRIANGLES: {
+            for (const std::vector<glm::vec3>& triangleVertices : assembledVertices) {
+                assert(triangleVertices.size() == 3 && "Triangle vertices must contain exactly 3 vertices.");
+                std::vector<Fragment> triangleFragments = triangle(triangleVertices[0], triangleVertices[1], triangleVertices[2]);
+                fragments.insert(fragments.end(), triangleFragments.begin(), triangleFragments.end());
+            }
+            break;
+        }
+        // Add more cases for other primitive types here (e.g., LINES, POINTS, etc.)
+        default:
+            std::cerr << "Error: Unsupported primitive type for rasterization." << std::endl;
+            break;
+    }
+
+    return fragments;
+}
+
+void render(Primitive polygon, const std::vector<glm::vec3>& vertices, const Uniforms& uniforms) {
+    // 1. Vertex Shader
+    std::vector<glm::vec3> transformedVertices;
+    for (const glm::vec3& vertex : vertices) {
+        transformedVertices.push_back(vertexShader(vertex, uniforms));
+    }
+
+    // 2. Primitive Assembly
+    std::vector<std::vector<glm::vec3>> assembledVertices = primitiveAssembly(polygon, transformedVertices);
+
+    // 3. Rasterization
+    std::vector<Fragment> fragments = rasterize(polygon, assembledVertices);
+
+    // 4. Fragment Shader
+    for (const Fragment& fragment : fragments) {
+        // Apply the fragment shader to compute the final color
+        Color color = fragmentShader(fragment);
+        framebuffer[fragment.position.y][fragment.position.x] = color;
     }
 }
 
@@ -120,6 +128,16 @@ int main(int argc, char* argv[]) {
         {500.0f, 200.0f, 0.0f}
     };
 
+    Uniforms uniforms;
+
+    glm::mat4 model = glm::mat4(1);
+    glm::mat4 view = glm::mat4(1);
+    glm::mat4 projection = glm::mat4(1);
+
+    uniforms.model = model;
+    uniforms.model = view;
+    uniforms.model = projection;
+
     bool running = true;
     while (running) {
         SDL_Event event;
@@ -133,7 +151,7 @@ int main(int argc, char* argv[]) {
         SDL_RenderClear(renderer);
 
         setColor(Color(255, 255, 0));
-        drawTriangles(vertices);
+        render(Primitive::TRIANGLES, vertices, uniforms);
 
         renderBuffer(renderer);
     }

@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <iostream>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <cassert>
 #include "color.h"
@@ -10,6 +11,7 @@
 #include "shaders.h"
 #include "fragment.h"
 #include "triangle.h"
+#include "camera.h"
 
 
 SDL_Window* window = nullptr;
@@ -113,8 +115,20 @@ void render(Primitive polygon, const std::vector<glm::vec3>& vertices, const Uni
     for (const Fragment& fragment : fragments) {
         // Apply the fragment shader to compute the final color
         Color color = fragmentShader(fragment);
-        framebuffer[fragment.position.y][fragment.position.x] = color;
+        point(fragment.position, color);
     }
+}
+
+glm::mat4 createViewportMatrix(size_t screenWidth, size_t screenHeight) {
+    glm::mat4 viewport = glm::mat4(1.0f);
+
+    // Scale
+    viewport = glm::scale(viewport, glm::vec3(screenWidth / 2.0f, screenHeight / 2.0f, 0.5f));
+
+    // Translate
+    viewport = glm::translate(viewport, glm::vec3(1.0f, 1.0f, 0.5f));
+
+    return viewport;
 }
 
 int main(int argc, char* argv[]) {
@@ -123,9 +137,9 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<glm::vec3> vertices = {
-        {300.0f, 200.0f, 0.0f},
-        {400.0f, 400.0f, 0.0f},
-        {500.0f, 200.0f, 0.0f}
+        {0.0f, 1.0f, 0.0f},      // Vertex 1 (top)
+        {-0.87f, -0.5f, 0.0f},   // Vertex 2 (bottom left)
+        {0.87f, -0.5f, 0.0f}     // Vertex 3 (bottom right)
     };
 
     Uniforms uniforms;
@@ -134,9 +148,28 @@ int main(int argc, char* argv[]) {
     glm::mat4 view = glm::mat4(1);
     glm::mat4 projection = glm::mat4(1);
 
-    uniforms.model = model;
-    uniforms.model = view;
-    uniforms.model = projection;
+    glm::vec3 translationVector(0.0f, 0.0f, 0.0f);
+    float a = 45.0f;
+    glm::vec3 rotationAxis(0.0f, 1.0f, 0.0f); // Rotate around the Y-axis
+    glm::vec3 scaleFactor(1.0f, 1.0f, 1.0f);
+
+    glm::mat4 translation = glm::translate(glm::mat4(1.0f), translationVector);
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), scaleFactor);
+
+    // Initialize a Camera object
+    Camera camera;
+    camera.cameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+    camera.targetPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    camera.upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    // Projection matrix
+    float fovInDegrees = 45.0f;
+    float aspectRatio = SCREEN_WIDTH / SCREEN_HEIGHT; // Assuming a screen resolution of 800x600
+    float nearClip = 0.1f;
+    float farClip = 100.0f;
+    uniforms.projection = glm::perspective(glm::radians(fovInDegrees), aspectRatio, nearClip, farClip);
+
+    uniforms.viewport = createViewportMatrix(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     bool running = true;
     while (running) {
@@ -147,8 +180,22 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        a += 0.1;
+        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(a), rotationAxis);
+
+        // Calculate the model matrix
+        uniforms.model = translation * rotation * scale;
+
+        // Create the view matrix using the Camera object
+        uniforms.view = glm::lookAt(
+            camera.cameraPosition, // The position of the camera
+            camera.targetPosition, // The point the camera is looking at
+            camera.upVector        // The up vector defining the camera's orientation
+        );
+
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+        clearFramebuffer();
 
         setColor(Color(255, 255, 0));
         render(Primitive::TRIANGLES, vertices, uniforms);

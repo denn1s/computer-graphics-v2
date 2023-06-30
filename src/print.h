@@ -1,3 +1,4 @@
+#pragma once
 #include <glm/glm.hpp>
 #include <iostream>
 #include "color.h"
@@ -5,6 +6,11 @@
 // overload for glm::vec3
 void print(const glm::vec3& v) {
     std::cout << "glm::vec3(" << v.x << ", " << v.y << ", " << v.z << ")" << std::endl;
+}
+
+// overload for glm::vec4
+void print(const glm::vec4& v) {
+    std::cout << "glm::vec4(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ")" << std::endl;
 }
 
 // overload for glm::ivec2

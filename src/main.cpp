@@ -68,7 +68,7 @@ void renderBuffer(SDL_Renderer* renderer) {
 
 void render(SDL_Renderer* renderer) {
     // Clear the framebuffer
-    // clear();
+    clear();
 
     // Draw a point
     point(x++, y++);

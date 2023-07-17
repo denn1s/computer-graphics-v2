@@ -1,10 +1,17 @@
 #include "print.h"
 
 int main() {
-    glm::vec3 exampleVec3(1.0f, 2.0f, 3.0f);
-    glm::mat4 exampleMat4(1.0f);  // Identity matrix
+    short s = 4;
+    int i = 5;
+    long l = 6;
+    int h = 0x11223344;
 
-    print("Hello, World!", exampleVec3, exampleMat4);
+    short* pointer = &s;
+
+    char* string = "hello";
+
+    char* array = new char[4];
+    array[3] = 9;
 
     return 0;
 }

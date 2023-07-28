@@ -139,7 +139,12 @@ int main(int argc, char* argv[]) {
     std::vector<glm::vec3> vertices = {
         {0.0f, 1.0f, 0.0f},      // Vertex 1 (top)
         {-0.87f, -0.5f, 0.0f},   // Vertex 2 (bottom left)
-        {0.87f, -0.5f, 0.0f}     // Vertex 3 (bottom right)
+        {0.87f, -0.5f, 0.0f},     // Vertex 3 (bottom right)
+
+
+        {1.0f, 1.0f, -1.0f},      // Vertex 1 (top)
+        {-0.87f, -0.5f, -1.0f},   // Vertex 2 (bottom left)
+        {0.87f, -1.0f, -1.0f}     // Vertex 3 (bottom right)
     };
 
     Uniforms uniforms;

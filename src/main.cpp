@@ -12,6 +12,7 @@
 #include "fragment.h"
 #include "triangle.h"
 #include "camera.h"
+#include "objLoader.h"
 
 
 SDL_Window* window = nullptr;
@@ -46,6 +47,27 @@ bool init() {
 
 void setColor(const Color& color) {
     currentColor = color;
+}
+
+std::vector<glm::vec3> setupVertexArray(const std::vector<glm::vec3>& vertices, const std::vector<Face>& faces)
+{
+    std::vector<glm::vec3> vertexArray;
+    
+    // For each face
+    for (const auto& face : faces)
+    {
+        // For each vertex in the face
+        for (const auto& vertexIndices : face.vertexIndices)
+        {
+            // Get the vertex position and normal from the input arrays using the indices from the face
+            glm::vec3 vertexPosition = vertices[vertexIndices[0]];
+
+            // Add the vertex position and normal to the vertex array
+            vertexArray.push_back(vertexPosition);
+        }
+    }
+
+    return vertexArray;
 }
 
 std::vector<std::vector<glm::vec3>> primitiveAssembly(
@@ -136,16 +158,11 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::vector<glm::vec3> vertices = {
-        {0.0f, 1.0f, 0.0f},      // Vertex 1 (top)
-        {-0.87f, -0.5f, 0.0f},   // Vertex 2 (bottom left)
-        {0.87f, -0.5f, 0.0f},     // Vertex 3 (bottom right)
+    std::vector<glm::vec3> vertices;
+    std::vector<Face> faces;
 
-
-        {1.0f, 1.0f, -1.0f},      // Vertex 1 (top)
-        {-0.87f, -0.5f, -1.0f},   // Vertex 2 (bottom left)
-        {0.87f, -1.0f, -1.0f}     // Vertex 3 (bottom right)
-    };
+    bool loaded = loadOBJ("models/model.obj", vertices, faces);
+    std::vector<glm::vec3> vertexArray = setupVertexArray(vertices, faces);
 
     Uniforms uniforms;
 
@@ -203,7 +220,7 @@ int main(int argc, char* argv[]) {
         clearFramebuffer();
 
         setColor(Color(255, 255, 0));
-        render(Primitive::TRIANGLES, vertices, uniforms);
+        render(Primitive::TRIANGLES, vertexArray, uniforms);
 
         renderBuffer(renderer);
     }

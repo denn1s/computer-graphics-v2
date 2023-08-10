@@ -103,7 +103,7 @@ void render(Primitive polygon, const std::vector<glm::vec3>& VBO, const Uniforms
     std::vector<Vertex> transformedVertices;
     for (int i = 0; i < VBO.size(); i+=2) {
         glm::vec3 v = VBO[i];
-        glm::vec3 c = VBO[i+i];
+        glm::vec3 c = VBO[i+1];
 
         Color color = Color(c.x, c.y, c.z);
         Vertex vertex = { v, color };
@@ -120,7 +120,7 @@ void render(Primitive polygon, const std::vector<glm::vec3>& VBO, const Uniforms
     for (const Fragment& fragment : fragments) {
         // Apply the fragment shader to compute the final color
         Color color = fragmentShader(fragment);
-        point(fragment.position, color);
+        point(fragment);
     }
 }
 
@@ -147,9 +147,9 @@ int main(int argc, char* argv[]) {
         {0.87f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f},     // Vertex 3 (bottom right)
 
 
-        {1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f},      // Vertex 1 (top)
-        {-0.87f, -0.5f, -1.0f}, {0.0f, 0.0f, 1.0f},   // Vertex 2 (bottom left)
-        {0.87f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}     // Vertex 3 (bottom right)
+        {1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f},      // Vertex 1 (top)
+        {-0.87f, -0.5f, -1.0f}, {0.0f, 1.0f, 0.0f},   // Vertex 2 (bottom left)
+        {0.87f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}     // Vertex 3 (bottom right)
     };
 
     Uniforms uniforms;

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <glm/glm.hpp>
 #include "color.h"  // Include your Color class header
+#include "fragment.h"
 
 constexpr size_t SCREEN_WIDTH = 800;
 constexpr size_t SCREEN_HEIGHT = 600;
@@ -9,6 +10,7 @@ constexpr size_t SCREEN_HEIGHT = 600;
 Color backgroundColor{0, 0, 0};
 
 std::array<std::array<Color, SCREEN_WIDTH>, SCREEN_HEIGHT> framebuffer;
+std::array<std::array<float, SCREEN_WIDTH>, SCREEN_HEIGHT> zbuffer;
 
 void renderBuffer(SDL_Renderer* renderer) {
     SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -47,8 +49,21 @@ void point(glm::ivec2 p, Color c) {
     point(p.x, p.y, c);
 }
 
+void point(Fragment f) {
+    if (f.position.x >= 0 && f.position.x < SCREEN_WIDTH && f.position.y >= 0 && f.position.y < SCREEN_HEIGHT) {
+        if (f.z > zbuffer[f.position.y][f.position.x]) {
+            framebuffer[f.position.y][f.position.x] = f.color;
+            zbuffer[f.position.y][f.position.x] = f.z;
+        }
+    }
+}
+
 void clearFramebuffer() {
   for (auto &row : framebuffer) {
     std::fill(row.begin(), row.end(), backgroundColor);
+  }
+
+  for (auto &row : zbuffer) {
+    std::fill(row.begin(), row.end(), -99999.0f);
   }
 }

@@ -8,6 +8,7 @@ struct Vertex {
 
 struct Fragment {
     glm::ivec2 position; // X and Y coordinates of the pixel (in screen space)
-    glm::ivec3 color; // r, g, b values for color
+    Color color; // r, g, b values for color
+    float z;  // zbuffer
     // Other interpolated attributes (e.g., color, texture coordinates, normals) can be added here
 };

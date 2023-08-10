@@ -2,6 +2,15 @@
 #include <glm/glm.hpp>
 #include <iostream>
 #include "color.h"
+#include "fragment.h"
+
+// overload for Vertex
+void print(const Vertex& v) {
+    std::cout << "Vertex{";
+    std::cout << "(" << v.position.x << ", " << v.position.y << ", " << v.position.z << ")";
+    std::cout << "}" << std::endl;
+}
+
 
 // overload for glm::vec3
 void print(const glm::vec3& v) {
@@ -46,16 +55,27 @@ void print(const glm::mat4& m) {
     std::cout << ")" << std::endl;
 }
 
-// base case function to end the recursion, using abbreviated template syntax
-void print(auto last) {
-    std::cout << last << '\n';
+// empty function to print newlines
+inline void print() {
+    std::cout << std::endl;
+}
+
+// base case function to end the recursion
+inline void print(auto one, bool last = true) {
+    std::cout << one;
+    if (last) {
+        std::cout << std::endl;
+    }
 }
 
 // recursive variadic template function
-template <typename T, typename... Args>
-void print(T first, Args... args) {
-    print(first);  // call the appropriate print function
-    if(sizeof...(args) > 0)
+inline void print(auto first, auto... args) {
+    print(first, false);  // call the appropriate print function
+
+    if constexpr (sizeof...(args) > 0) {
         std::cout << ' ';  // print a space only if there are more arguments
-    print(args...);  // call print with remaining arguments
+        print(args...);    // call print with remaining arguments
+    } else {
+        std::cout << std::endl;
+    }
 }

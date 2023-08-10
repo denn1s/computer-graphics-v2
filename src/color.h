@@ -9,8 +9,21 @@ struct Color {
     Uint8 b;
     Uint8 a;
 
-    Color(Uint8 red = 0, Uint8 green = 0, Uint8 blue = 0, Uint8 alpha = 255)
-        : r(red), g(green), b(blue), a(alpha) {}
+    Color() : r(0), g(0), b(0), a(255) {}
+
+    Color(int red, int green, int blue, int alpha = 255) {
+        r = static_cast<Uint8>(std::min(std::max(red, 0), 255));
+        g = static_cast<Uint8>(std::min(std::max(green, 0), 255));
+        b = static_cast<Uint8>(std::min(std::max(blue, 0), 255));
+        a = static_cast<Uint8>(std::min(std::max(alpha, 0), 255));
+    }
+
+    Color(float red, float green, float blue, float alpha = 1.0f) {
+        r = static_cast<Uint8>(std::min(std::max(red * 255, 0.0f), 255.0f));
+        g = static_cast<Uint8>(std::min(std::max(green * 255, 0.0f), 255.0f));
+        b = static_cast<Uint8>(std::min(std::max(blue * 255, 0.0f), 255.0f));
+        a = static_cast<Uint8>(std::min(std::max(alpha * 255, 0.0f), 255.0f));
+    }
 
     // Overload the + operator to add colors
     Color operator+(const Color& other) const {

@@ -29,19 +29,12 @@ glm::vec3 barycentricCoordinates(const glm::vec3& P, const glm::vec3& A, const g
     return glm::vec3(w, v, u);
 }
 
-std::vector<Fragment> triangle(const glm::vec3& A, const glm::vec3& B, const glm::vec3& C) {
+std::vector<Fragment> triangle(const Vertex& a, const Vertex& b, const Vertex& c) {
+    glm::vec3 A = a.position;
+    glm::vec3 B = b.position;
+    glm::vec3 C = c.position;
+
     std::vector<Fragment> fragments;
-
-
-    // Rasterize the edges using the line function
-    std::vector<Fragment> edgeAB = line(A, B);
-    std::vector<Fragment> edgeBC = line(B, C);
-    std::vector<Fragment> edgeCA = line(C, A);
-
-    // Combine the fragments from each edge
-    fragments.insert(fragments.end(), edgeAB.begin(), edgeAB.end());
-    fragments.insert(fragments.end(), edgeBC.begin(), edgeBC.end());
-    fragments.insert(fragments.end(), edgeCA.begin(), edgeCA.end());
 
     // Calculate the bounding box of the triangle
     float minX = std::min(std::min(A.x, B.x), C.x);

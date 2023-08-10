@@ -48,18 +48,18 @@ void setColor(const Color& color) {
     currentColor = color;
 }
 
-std::vector<std::vector<glm::vec3>> primitiveAssembly(
+std::vector<std::vector<Vertex>> primitiveAssembly(
     Primitive polygon,
-    const std::vector<glm::vec3>& transformedVertices
+    const std::vector<Vertex>& transformedVertices
 ) {
-    std::vector<std::vector<glm::vec3>> assembledVertices;
+    std::vector<std::vector<Vertex>> assembledVertices;
 
     switch (polygon) {
         case Primitive::TRIANGLES: {
             assert(transformedVertices.size() % 3 == 0 && "The number of vertices must be a multiple of 3 for triangles.");
-
+            
             for (size_t i = 0; i < transformedVertices.size(); i += 3) {
-                std::vector<glm::vec3> triangle = {
+                std::vector<Vertex> triangle = {
                     transformedVertices[i],
                     transformedVertices[i + 1],
                     transformedVertices[i + 2]
@@ -77,12 +77,12 @@ std::vector<std::vector<glm::vec3>> primitiveAssembly(
     return assembledVertices;
 }
 
-std::vector<Fragment> rasterize(Primitive primitive, const std::vector<std::vector<glm::vec3>>& assembledVertices) {
+std::vector<Fragment> rasterize(Primitive primitive, const std::vector<std::vector<Vertex>>& assembledVertices) {
     std::vector<Fragment> fragments;
 
     switch (primitive) {
         case Primitive::TRIANGLES: {
-            for (const std::vector<glm::vec3>& triangleVertices : assembledVertices) {
+            for (const std::vector<Vertex>& triangleVertices : assembledVertices) {
                 assert(triangleVertices.size() == 3 && "Triangle vertices must contain exactly 3 vertices.");
                 std::vector<Fragment> triangleFragments = triangle(triangleVertices[0], triangleVertices[1], triangleVertices[2]);
                 fragments.insert(fragments.end(), triangleFragments.begin(), triangleFragments.end());
@@ -98,15 +98,20 @@ std::vector<Fragment> rasterize(Primitive primitive, const std::vector<std::vect
     return fragments;
 }
 
-void render(Primitive polygon, const std::vector<glm::vec3>& vertices, const Uniforms& uniforms) {
+void render(Primitive polygon, const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
     // 1. Vertex Shader
-    std::vector<glm::vec3> transformedVertices;
-    for (const glm::vec3& vertex : vertices) {
+    std::vector<Vertex> transformedVertices;
+    for (int i = 0; i < VBO.size(); i+=2) {
+        glm::vec3 v = VBO[i];
+        glm::vec3 c = VBO[i+i];
+
+        Color color = Color(c.x, c.y, c.z);
+        Vertex vertex = { v, color };
         transformedVertices.push_back(vertexShader(vertex, uniforms));
     }
 
     // 2. Primitive Assembly
-    std::vector<std::vector<glm::vec3>> assembledVertices = primitiveAssembly(polygon, transformedVertices);
+    std::vector<std::vector<Vertex>> assembledVertices = primitiveAssembly(polygon, transformedVertices);
 
     // 3. Rasterization
     std::vector<Fragment> fragments = rasterize(polygon, assembledVertices);
@@ -136,15 +141,15 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::vector<glm::vec3> vertices = {
-        {0.0f, 1.0f, 0.0f},      // Vertex 1 (top)
-        {-0.87f, -0.5f, 0.0f},   // Vertex 2 (bottom left)
-        {0.87f, -0.5f, 0.0f},     // Vertex 3 (bottom right)
+    std::vector<glm::vec3> vertexBufferObject = {
+        {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f},     // Vertex 1 (top), position, color
+        {-0.87f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f},   // Vertex 2 (bottom left)
+        {0.87f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f},     // Vertex 3 (bottom right)
 
 
-        {1.0f, 1.0f, -1.0f},      // Vertex 1 (top)
-        {-0.87f, -0.5f, -1.0f},   // Vertex 2 (bottom left)
-        {0.87f, -1.0f, -1.0f}     // Vertex 3 (bottom right)
+        {1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f},      // Vertex 1 (top)
+        {-0.87f, -0.5f, -1.0f}, {0.0f, 0.0f, 1.0f},   // Vertex 2 (bottom left)
+        {0.87f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}     // Vertex 3 (bottom right)
     };
 
     Uniforms uniforms;
@@ -203,7 +208,7 @@ int main(int argc, char* argv[]) {
         clearFramebuffer();
 
         setColor(Color(255, 255, 0));
-        render(Primitive::TRIANGLES, vertices, uniforms);
+        render(Primitive::TRIANGLES, vertexBufferObject, uniforms);
 
         renderBuffer(renderer);
     }

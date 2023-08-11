@@ -2,6 +2,7 @@
 #include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <sstream>
 #include <vector>
 #include <cassert>
 #include "color.h"
@@ -181,8 +182,13 @@ int main(int argc, char* argv[]) {
 
     uniforms.viewport = createViewportMatrix(SCREEN_WIDTH, SCREEN_HEIGHT);
 
+    Uint32 frameStart, frameTime;
+    std::string title = "FPS: ";
+
     bool running = true;
     while (running) {
+        frameStart = SDL_GetTicks();
+
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
@@ -211,6 +217,15 @@ int main(int argc, char* argv[]) {
         render(Primitive::TRIANGLES, vertexBufferObject, uniforms);
 
         renderBuffer(renderer);
+
+        frameTime = SDL_GetTicks() - frameStart;
+
+        // Calculate frames per second and update window title
+        if (frameTime > 0) {
+            std::ostringstream titleStream;
+            titleStream << "FPS: " << 1000.0 / frameTime;  // Milliseconds to seconds
+            SDL_SetWindowTitle(window, titleStream.str().c_str());
+        }
     }
 
     SDL_DestroyRenderer(renderer);

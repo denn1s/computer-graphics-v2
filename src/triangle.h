@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include "line.h"
 
+glm::vec3 L = glm::vec3(400.0f, 400.0f, 200.0f);
+
 glm::vec3 barycentricCoordinates(const glm::vec3& P, const glm::vec3& A, const glm::vec3& B, const glm::vec3& C) {
     // The formula used is directly derived from the area of triangles. It uses the areas of sub-triangles PBC, PCA, and PAB
     // to calculate the barycentric coordinates. The equations for 'w' and 'v' are derived from the ratios of these areas to the area of ABC.
@@ -56,8 +58,17 @@ std::vector<Fragment> triangle(const Vertex& a, const Vertex& b, const Vertex& c
 
                 Color interpolatedColor = a.color * barycentric.x + b.color * barycentric.y + c.color * barycentric.z;
                 double interpolatedZ = a.position.z * barycentric.x + b.position.z * barycentric.y + c.position.z * barycentric.z;
+
+
+                glm::vec3 edge1 = B - A;
+                glm::vec3 edge2 = C - A;
+                glm::vec3 normal = glm::normalize(glm::cross(edge1, edge2));
+                glm::vec3 lightDirection = glm::normalize(L - P);
+
+                float intensity = glm::dot(normal, lightDirection);
+
                 // Add the point to the fragment list
-                fragments.push_back(Fragment{P, interpolatedColor, interpolatedZ});
+                fragments.push_back(Fragment{P, interpolatedColor, interpolatedZ, intensity});
             }
         }
     }

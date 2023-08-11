@@ -24,12 +24,12 @@ Vertex vertexShader(const Vertex& vertex, const Uniforms& uniforms) {
     };
 }
 
-Color fragmentShader(const Fragment& fragment) {
+Fragment fragmentShader(Fragment& fragment) {
     // Example: Assign a constant color to each fragment
-    Color outputColor = fragment.color; // Red color with full opacity
 
+    fragment.color = fragment.color * fragment.intensity; // Red color with full opacity
     // You can modify this function to implement more complex shading
     // based on the fragment's attributes (e.g., depth, interpolated normals, texture coordinates, etc.)
 
-    return outputColor;
+    return fragment;
 }

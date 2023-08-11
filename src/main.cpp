@@ -60,7 +60,7 @@ void render(const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
 
                 Color color = Color(c.x, c.y, c.z);
                 Vertex vertex = { v, color };
-                // Now we can safely write to the vector in parallel
+
                 transformedVertices[i] = vertexShader(vertex, uniforms);
             }
         }
@@ -72,13 +72,11 @@ void render(const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, transformedVertices.size() / 3),
         [&](const tbb::blocked_range<size_t>& range) {
             for (size_t i = range.begin(); i != range.end(); ++i) {
-                std::vector<Vertex> triangle = {
-                    transformedVertices[3 * i],
-                    transformedVertices[3 * i + 1],
-                    transformedVertices[3 * i + 2]
-                };
-                // Each thread writes to a unique index, so there's no need for locks
-                assembledVertices[i] = triangle;
+                Vertex edge1 = transformedVertices[3 * i];
+                Vertex edge2 = transformedVertices[3 * i + 1];
+                Vertex edge3 = transformedVertices[3 * i + 2];
+
+                assembledVertices[i] =  { edge1, edge2, edge3 };
             }
         }
     );
@@ -106,9 +104,9 @@ void render(const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, concurrentFragments.size()),
         [&](const tbb::blocked_range<size_t>& range) {
             for (size_t i = range.begin(); i != range.end(); ++i) {
-                const Fragment& fragment = concurrentFragments[i];
+                const Fragment& fragment = fragmentShader(concurrentFragments[i]);
                 // Apply the fragment shader to compute the final color
-                Color color = fragmentShader(fragment);
+
                 point(fragment);  // Be aware of potential race conditions here
             }
         }
@@ -171,6 +169,8 @@ int main(int argc, char* argv[]) {
     uniforms.projection = glm::perspective(glm::radians(fovInDegrees), aspectRatio, nearClip, farClip);
 
     uniforms.viewport = createViewportMatrix(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+
 
     Uint32 frameStart, frameTime;
     std::string title = "FPS: ";

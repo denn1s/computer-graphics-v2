@@ -55,7 +55,7 @@ std::vector<Fragment> triangle(const Vertex& a, const Vertex& b, const Vertex& c
                 barycentric.z >= 0 && barycentric.z <= 1) {
 
                 Color interpolatedColor = a.color * barycentric.x + b.color * barycentric.y + c.color * barycentric.z;
-                float interpolatedZ = a.position.z * barycentric.x + b.position.z * barycentric.y + c.position.z * barycentric.z;
+                double interpolatedZ = a.position.z * barycentric.x + b.position.z * barycentric.y + c.position.z * barycentric.z;
                 // Add the point to the fragment list
                 fragments.push_back(Fragment{P, interpolatedColor, interpolatedZ});
             }

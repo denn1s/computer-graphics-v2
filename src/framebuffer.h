@@ -9,8 +9,29 @@ constexpr size_t SCREEN_HEIGHT = 600;
 
 Color backgroundColor{0, 0, 0};
 
-std::array<std::array<Color, SCREEN_WIDTH>, SCREEN_HEIGHT> framebuffer;
-std::array<std::array<float, SCREEN_WIDTH>, SCREEN_HEIGHT> zbuffer;
+std::array<Color, SCREEN_WIDTH * SCREEN_HEIGHT> framebuffer;
+std::array<double, SCREEN_WIDTH * SCREEN_HEIGHT> zbuffer;
+
+// Create a 2D array of mutexes
+std::array<std::mutex, SCREEN_WIDTH * SCREEN_HEIGHT> mutexes;
+
+void point(Fragment f) {
+    if (f.position.x >= 0 && f.position.x < SCREEN_WIDTH && f.position.y >= 0 && f.position.y < SCREEN_HEIGHT) {
+        // Lock the mutex for this pixel
+        std::lock_guard<std::mutex> lock(mutexes[f.position.y * SCREEN_WIDTH + f.position.x]);
+
+        if (f.z < zbuffer[f.position.y * SCREEN_WIDTH + f.position.x]) {
+            framebuffer[f.position.y * SCREEN_WIDTH + f.position.x] = f.color;
+            zbuffer[f.position.y * SCREEN_WIDTH + f.position.x] = f.z;
+        }
+    }
+}
+
+void clearFramebuffer() {
+    std::fill(framebuffer.begin(), framebuffer.end(), backgroundColor);
+    std::fill(zbuffer.begin(), zbuffer.end(), 99999.0f);
+}
+
 
 void renderBuffer(SDL_Renderer* renderer) {
     SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -26,7 +47,7 @@ void renderBuffer(SDL_Renderer* renderer) {
     for (int y = 0; y < SCREEN_HEIGHT; y++) {
         for (int x = 0; x < SCREEN_WIDTH; x++) {
             int index = y * (pitch / sizeof(Uint32)) + x;
-            const Color& color = framebuffer[y][x];
+            const Color& color = framebuffer[y * SCREEN_WIDTH + x];
             texturePixels32[index] = SDL_MapRGBA(mappingFormat, color.r, color.g, color.b, color.a);
         }
     }
@@ -37,33 +58,4 @@ void renderBuffer(SDL_Renderer* renderer) {
     SDL_DestroyTexture(texture);
 
     SDL_RenderPresent(renderer);
-}
-
-void point(int x, int y, Color c) {
-    if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
-        framebuffer[y][x] = c; 
-    }
-}
-
-void point(glm::ivec2 p, Color c) {
-    point(p.x, p.y, c);
-}
-
-void point(Fragment f) {
-    if (f.position.x >= 0 && f.position.x < SCREEN_WIDTH && f.position.y >= 0 && f.position.y < SCREEN_HEIGHT) {
-        if (f.z > zbuffer[f.position.y][f.position.x]) {
-            framebuffer[f.position.y][f.position.x] = f.color;
-            zbuffer[f.position.y][f.position.x] = f.z;
-        }
-    }
-}
-
-void clearFramebuffer() {
-  for (auto &row : framebuffer) {
-    std::fill(row.begin(), row.end(), backgroundColor);
-  }
-
-  for (auto &row : zbuffer) {
-    std::fill(row.begin(), row.end(), -99999.0f);
-  }
 }

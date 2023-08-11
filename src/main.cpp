@@ -2,6 +2,11 @@
 #include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
+#include <tbb/concurrent_vector.h>
+
+
 #include <vector>
 #include <cassert>
 #include "color.h"
@@ -17,11 +22,6 @@
 SDL_Window* window = nullptr;
 SDL_Renderer* renderer = nullptr;
 Color currentColor;
-
-enum class Primitive {
-    TRIANGLES,
-    // Add more primitive types here (e.g., SQUARES, LINES, etc.)
-};
 
 bool init() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -48,80 +48,72 @@ void setColor(const Color& color) {
     currentColor = color;
 }
 
-std::vector<std::vector<Vertex>> primitiveAssembly(
-    Primitive polygon,
-    const std::vector<Vertex>& transformedVertices
-) {
-    std::vector<std::vector<Vertex>> assembledVertices;
 
-    switch (polygon) {
-        case Primitive::TRIANGLES: {
-            assert(transformedVertices.size() % 3 == 0 && "The number of vertices must be a multiple of 3 for triangles.");
-            
-            for (size_t i = 0; i < transformedVertices.size(); i += 3) {
-                std::vector<Vertex> triangle = {
-                    transformedVertices[i],
-                    transformedVertices[i + 1],
-                    transformedVertices[i + 2]
-                };
-                assembledVertices.push_back(triangle);
-            }
-            break;
-        }
-        // Add more cases for other primitive types here
-        default:
-            std::cerr << "Error: Unsupported primitive type." << std::endl;
-            break;
-    }
-
-    return assembledVertices;
-}
-
-std::vector<Fragment> rasterize(Primitive primitive, const std::vector<std::vector<Vertex>>& assembledVertices) {
-    std::vector<Fragment> fragments;
-
-    switch (primitive) {
-        case Primitive::TRIANGLES: {
-            for (const std::vector<Vertex>& triangleVertices : assembledVertices) {
-                assert(triangleVertices.size() == 3 && "Triangle vertices must contain exactly 3 vertices.");
-                std::vector<Fragment> triangleFragments = triangle(triangleVertices[0], triangleVertices[1], triangleVertices[2]);
-                fragments.insert(fragments.end(), triangleFragments.begin(), triangleFragments.end());
-            }
-            break;
-        }
-        // Add more cases for other primitive types here (e.g., LINES, POINTS, etc.)
-        default:
-            std::cerr << "Error: Unsupported primitive type for rasterization." << std::endl;
-            break;
-    }
-
-    return fragments;
-}
-
-void render(Primitive polygon, const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
+void render(const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
     // 1. Vertex Shader
-    std::vector<Vertex> transformedVertices;
-    for (int i = 0; i < VBO.size(); i+=2) {
-        glm::vec3 v = VBO[i];
-        glm::vec3 c = VBO[i+1];
+    std::vector<Vertex> transformedVertices(VBO.size() / 2);
 
-        Color color = Color(c.x, c.y, c.z);
-        Vertex vertex = { v, color };
-        transformedVertices.push_back(vertexShader(vertex, uniforms));
-    }
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, VBO.size() / 2),
+        [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i != range.end(); ++i) {
+                glm::vec3 v = VBO[2 * i];
+                glm::vec3 c = VBO[2 * i + 1];
+
+                Color color = Color(c.x, c.y, c.z);
+                Vertex vertex = { v, color };
+                // Now we can safely write to the vector in parallel
+                transformedVertices[i] = vertexShader(vertex, uniforms);
+            }
+        }
+    );
 
     // 2. Primitive Assembly
-    std::vector<std::vector<Vertex>> assembledVertices = primitiveAssembly(polygon, transformedVertices);
+    std::vector<std::vector<Vertex>> assembledVertices(transformedVertices.size() / 3);
+
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, transformedVertices.size() / 3),
+        [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i != range.end(); ++i) {
+                std::vector<Vertex> triangle = {
+                    transformedVertices[3 * i],
+                    transformedVertices[3 * i + 1],
+                    transformedVertices[3 * i + 2]
+                };
+                // Each thread writes to a unique index, so there's no need for locks
+                assembledVertices[i] = triangle;
+            }
+        }
+    );
 
     // 3. Rasterization
-    std::vector<Fragment> fragments = rasterize(polygon, assembledVertices);
+    tbb::concurrent_vector<Fragment> concurrentFragments;
+
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, assembledVertices.size()),
+        [&](const tbb::blocked_range<size_t>& r) {
+            for (size_t i = r.begin(); i != r.end(); ++i) {
+                std::vector<Fragment> rasterizedTriangle = triangle(
+                    assembledVertices[i][0],
+                    assembledVertices[i][1],
+                    assembledVertices[i][2]
+                );
+
+                for(const auto& fragment : rasterizedTriangle) {
+                    concurrentFragments.push_back(fragment);
+                }
+            }
+        }
+    );
 
     // 4. Fragment Shader
-    for (const Fragment& fragment : fragments) {
-        // Apply the fragment shader to compute the final color
-        Color color = fragmentShader(fragment);
-        point(fragment);
-    }
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, concurrentFragments.size()),
+        [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i != range.end(); ++i) {
+                const Fragment& fragment = concurrentFragments[i];
+                // Apply the fragment shader to compute the final color
+                Color color = fragmentShader(fragment);
+                point(fragment);  // Be aware of potential race conditions here
+            }
+        }
+    );
 }
 
 glm::mat4 createViewportMatrix(size_t screenWidth, size_t screenHeight) {
@@ -208,7 +200,7 @@ int main(int argc, char* argv[]) {
         clearFramebuffer();
 
         setColor(Color(255, 255, 0));
-        render(Primitive::TRIANGLES, vertexBufferObject, uniforms);
+        render(vertexBufferObject, uniforms);
 
         renderBuffer(renderer);
     }

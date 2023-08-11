@@ -7,6 +7,11 @@ project(SR)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+set(CMAKE_BUILD_TYPE Release)
+
+# set the profiling flag
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+
 # find all .cpp files in the src directory
 file(GLOB SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 

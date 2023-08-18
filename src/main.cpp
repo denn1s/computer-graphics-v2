@@ -16,6 +16,7 @@
 #include "fragment.h"
 #include "triangle.h"
 #include "camera.h"
+#include "ObjLoader.h"
 
 
 SDL_Window* window = nullptr;
@@ -51,18 +52,10 @@ void setColor(const Color& color) {
 void render(const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
     // 1. Vertex Shader
     std::vector<Vertex> transformedVertices(VBO.size() / 2);
-
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, VBO.size() / 2),
-        [&](const tbb::blocked_range<size_t>& range) {
-            for (size_t i = range.begin(); i != range.end(); ++i) {
-                glm::vec3 v = VBO[2 * i];
-                glm::vec3 c = VBO[2 * i + 1];
-
-                Color color = Color(c.x, c.y, c.z);
-                Vertex vertex = { v, color };
-
-                transformedVertices[i] = vertexShader(vertex, uniforms);
-            }
+    tbb::parallel_for(size_t(0), VBO.size() / 2,
+        [&](size_t i) {
+            Vertex vertex = { VBO[i * 2], VBO[i * 2 + 1] };
+            transformedVertices[i] = vertexShader(vertex, uniforms);
         }
     );
 
@@ -130,16 +123,28 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::vector<glm::vec3> vertexBufferObject = {
-        {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f},     // Vertex 1 (top), position, color
-        {-0.87f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f},   // Vertex 2 (bottom left)
-        {0.87f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f},     // Vertex 3 (bottom right)
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    std::vector<Face> faces;
+    std::vector<glm::vec3> vertexBufferObject; // This will contain both vertices and normals
 
+    loadOBJ("models/model.obj", vertices, normals, faces);
 
-        {1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f},      // Vertex 1 (top)
-        {-0.87f, -0.5f, -1.0f}, {0.0f, 1.0f, 0.0f},   // Vertex 2 (bottom left)
-        {0.87f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}     // Vertex 3 (bottom right)
-    };
+    for (const auto& face : faces)
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            // Get the vertex position
+            glm::vec3 vertexPosition = vertices[face.vertexIndices[i]];
+
+            // Get the normal for the current vertex
+            glm::vec3 vertexNormal = normals[face.normalIndices[i]];
+
+            // Add the vertex position and normal to the vertex array
+            vertexBufferObject.push_back(vertexPosition);
+            vertexBufferObject.push_back(vertexNormal);
+        }
+    }
 
     Uniforms uniforms;
 
@@ -169,9 +174,6 @@ int main(int argc, char* argv[]) {
     uniforms.projection = glm::perspective(glm::radians(fovInDegrees), aspectRatio, nearClip, farClip);
 
     uniforms.viewport = createViewportMatrix(SCREEN_WIDTH, SCREEN_HEIGHT);
-
-
-
     Uint32 frameStart, frameTime;
     std::string title = "FPS: ";
 

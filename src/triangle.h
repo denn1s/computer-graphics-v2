@@ -2,75 +2,70 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include "line.h"
+#include "framebuffer.h"
 
-glm::vec3 L = glm::vec3(400.0f, 400.0f, 200.0f);
+glm::vec3 L = glm::vec3(0.0f, 0.0f, 1.0f);
 
-glm::vec3 barycentricCoordinates(const glm::vec3& P, const glm::vec3& A, const glm::vec3& B, const glm::vec3& C) {
-    // The formula used is directly derived from the area of triangles. It uses the areas of sub-triangles PBC, PCA, and PAB
-    // to calculate the barycentric coordinates. The equations for 'w' and 'v' are derived from the ratios of these areas to the area of ABC.
+std::pair<float, float> barycentricCoordinates(const glm::ivec2& P, const glm::vec3& A, const glm::vec3& B, const glm::vec3& C) {
+    glm::vec3 bary = glm::cross(
+        glm::vec3(C.x - A.x, B.x - A.x, A.x - P.x),
+        glm::vec3(C.y - A.y, B.y - A.y, A.y - P.y)
+    );
 
-    // w is the weight of vertex A. It is calculated as the ratio of the area of triangle PBC to ABC.
-    // It is obtained by subtracting the y-coordinate of B from the y-coordinate of C, 
-    // multiplying it with the difference of the x-coordinate of P and the x-coordinate of C,
-    // then adding the product of the difference of the x-coordinate of C and the x-coordinate of B 
-    // and the difference of the y-coordinate of P and the y-coordinate of C.
-    // This entire sum is divided by the determinant of the 2x2 matrix formed by the vectors AC and BC.
-    float w = ((B.y - C.y)*(P.x - C.x) + (C.x - B.x)*(P.y - C.y)) /
-              ((B.y - C.y)*(A.x - C.x) + (C.x - B.x)*(A.y - C.y));
+    if (abs(bary.z) < 1) {
+        return std::make_pair(-1, -1);
+    }
 
-    // v is the weight of vertex B. It is calculated as the ratio of the area of triangle PCA to ABC.
-    // The calculation is similar to that of 'w', but using different sets of points.
-    float v = ((C.y - A.y)*(P.x - C.x) + (A.x - C.x)*(P.y - C.y)) /
-              ((B.y - C.y)*(A.x - C.x) + (C.x - B.x)*(A.y - C.y));
-
-    // u is the weight of vertex C. It is calculated as 1 minus the sum of the other two weights,
-    // because the barycentric coordinates must sum to 1. This property comes from the definition of barycentric coordinates.
-    float u = 1.0f - w - v;
-
-    // The function returns the barycentric coordinates as a 3D vector.
-    return glm::vec3(w, v, u);
+    return std::make_pair(
+        bary.y / bary.z,
+        bary.x / bary.z
+    );    
 }
 
 std::vector<Fragment> triangle(const Vertex& a, const Vertex& b, const Vertex& c) {
-    glm::vec3 A = a.position;
-    glm::vec3 B = b.position;
-    glm::vec3 C = c.position;
+  std::vector<Fragment> fragments;
+  glm::vec3 A = a.position;
+  glm::vec3 B = b.position;
+  glm::vec3 C = c.position;
 
-    std::vector<Fragment> fragments;
+  float minX = std::min(std::min(A.x, B.x), C.x);
+  float minY = std::min(std::min(A.y, B.y), C.y);
+  float maxX = std::max(std::max(A.x, B.x), C.x);
+  float maxY = std::max(std::max(A.y, B.y), C.y);
 
-    // Calculate the bounding box of the triangle
-    float minX = std::min(std::min(A.x, B.x), C.x);
-    float minY = std::min(std::min(A.y, B.y), C.y);
-    float maxX = std::max(std::max(A.x, B.x), C.x);
-    float maxY = std::max(std::max(A.y, B.y), C.y);
+  // Iterate over each point in the bounding box
+  for (int y = static_cast<int>(std::ceil(minY)); y <= static_cast<int>(std::floor(maxY)); ++y) {
+    for (int x = static_cast<int>(std::ceil(minX)); x <= static_cast<int>(std::floor(maxX)); ++x) {
+      if (x < 0 || y < 0 || y > SCREEN_HEIGHT || x > SCREEN_WIDTH)
+        continue;
+        
+      glm::ivec2 P(x, y);
+      auto barycentric = barycentricCoordinates(P, A, B, C);
+      float w = 1 - barycentric.first - barycentric.second;
+      float v = barycentric.first;
+      float u = barycentric.second;
+      float epsilon = 1e-10;
 
-    // Iterate over each point in the bounding box
-    for (float y = minY; y <= maxY; ++y) {
-        for (float x = minX; x <= maxX; ++x) {
-            // Calculate barycentric coordinates for the point
-            glm::vec3 P(x, y, 0.0f);
-            glm::vec3 barycentric = barycentricCoordinates(P, A, B, C);
+      if (w < epsilon || v < epsilon || u < epsilon)
+        continue;
+          
+      double z = A.z * w + B.z * v + C.z * u;
+      
+      /* glm::vec3 normal = glm::normalize( */
+      /*     a.normal * w + b.normal * v + c.normal * u */
+      /* ); */
+      glm::vec3 normal = a.normal; // assume flatness
+      float intensity = glm::dot(normal, L);
 
-            // If the point's barycentric coordinates are all between 0 and 1, it lies within the triangle
-            if (barycentric.x >= 0 && barycentric.x <= 1 && 
-                barycentric.y >= 0 && barycentric.y <= 1 && 
-                barycentric.z >= 0 && barycentric.z <= 1) {
-
-                Color interpolatedColor = a.color * barycentric.x + b.color * barycentric.y + c.color * barycentric.z;
-                double interpolatedZ = a.position.z * barycentric.x + b.position.z * barycentric.y + c.position.z * barycentric.z;
-
-
-                glm::vec3 edge1 = B - A;
-                glm::vec3 edge2 = C - A;
-                glm::vec3 normal = glm::normalize(glm::cross(edge1, edge2));
-                glm::vec3 lightDirection = glm::normalize(L - P);
-
-                float intensity = glm::dot(normal, lightDirection);
-
-                // Add the point to the fragment list
-                fragments.push_back(Fragment{P, interpolatedColor, interpolatedZ, intensity});
-            }
-        }
+      fragments.push_back(
+        Fragment{
+          static_cast<uint16_t>(P.x),
+          static_cast<uint16_t>(P.y),
+          z,
+          Color(255, 255, 255),
+          intensity}
+      );
     }
-    return fragments;
+}
+  return fragments;
 }

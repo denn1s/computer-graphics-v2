@@ -1,14 +1,23 @@
 #pragma once
+#include <glm/glm.hpp>
+#include <cstdint>
 #include "color.h"
 
 struct Vertex {
-    glm::vec3 position;
-    Color color;
+  glm::vec3 position;
+  glm::vec3 normal;
 };
 
 struct Fragment {
-    glm::ivec2 position; // X and Y coordinates of the pixel (in screen space)
-    Color color; // r, g, b values for color
-    double z;  // zbuffer
-    float intensity;  // light intensity
+  uint16_t x;      
+  uint16_t y;      
+  double z;  // zbuffer
+  Color color; // r, g, b values for color
+  float intensity;  // light intensity
 };
+
+struct FragColor {
+  Color color;
+  double z; // instead of z buffer
+};
+

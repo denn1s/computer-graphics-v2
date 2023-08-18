@@ -20,7 +20,8 @@ std::vector<Fragment> line(const glm::vec3& v1, const glm::vec3& v2) {
 
     while (true) {
         Fragment fragment;
-        fragment.position = current;
+        fragment.x = current.x;
+        fragment.y = current.y;
 
         fragments.push_back(fragment);
 

@@ -51,18 +51,21 @@ std::vector<Fragment> triangle(const Vertex& a, const Vertex& b, const Vertex& c
           
       double z = A.z * w + B.z * v + C.z * u;
       
-      /* glm::vec3 normal = glm::normalize( */
-      /*     a.normal * w + b.normal * v + c.normal * u */
-      /* ); */
-      glm::vec3 normal = a.normal; // assume flatness
+       glm::vec3 normal = glm::normalize( 
+           a.normal * w + b.normal * v + c.normal * u
+       ); 
+      // glm::vec3 normal = a.normal; // assume flatness
       float intensity = glm::dot(normal, L);
+      
+      if (intensity < 0)
+        continue;
 
       fragments.push_back(
         Fragment{
           static_cast<uint16_t>(P.x),
           static_cast<uint16_t>(P.y),
           z,
-          Color(255, 255, 255),
+          Color(205, 205, 205),
           intensity}
       );
     }

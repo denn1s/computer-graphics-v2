@@ -48,7 +48,6 @@ void setColor(const Color& color) {
     currentColor = color;
 }
 
-
 void render(const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
     // 1. Vertex Shader
     std::vector<Vertex> transformedVertices(VBO.size() / 2);

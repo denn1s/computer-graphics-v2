@@ -7,10 +7,15 @@
 #include <cstring>
 #include <algorithm>
 #include <glm/glm.hpp>
-
 #include "ObjLoader.h"
 
-bool loadOBJ(const char* path, std::vector<glm::vec3>& out_vertices, std::vector<glm::vec3>& out_normals, std::vector<Face>& out_faces)
+bool loadOBJ(
+    const char* path,
+    std::vector<glm::vec3>& out_vertices,
+    std::vector<glm::vec3>& out_normals,
+    std::vector<glm::vec3>& out_texcoords,
+    std::vector<Face>& out_faces
+)
 {
     std::ifstream file(path);
     if (!file)
@@ -38,6 +43,12 @@ bool loadOBJ(const char* path, std::vector<glm::vec3>& out_vertices, std::vector
             iss >> normal.x >> normal.y >> normal.z;
             out_normals.push_back(normal);
         }
+        else if (lineHeader == "vt")
+        {
+            glm::vec3 tex;
+            iss >> tex.x >> tex.y >> tex.z;
+            out_texcoords.push_back(tex);
+        }
         else if (lineHeader == "f")
         {
             Face face;
@@ -49,12 +60,12 @@ bool loadOBJ(const char* path, std::vector<glm::vec3>& out_vertices, std::vector
                 std::replace(faceData.begin(), faceData.end(), '/', ' ');
 
                 std::istringstream faceDataIss(faceData);
-                int temp; // for discarding texture indices
-                faceDataIss >> face.vertexIndices[i] >> temp >> face.normalIndices[i];
+                faceDataIss >> face.vertexIndices[i] >> face.texIndices[i] >> face.normalIndices[i];
 
                 // obj indices are 1-based, so convert to 0-based
                 face.vertexIndices[i]--;
                 face.normalIndices[i]--;
+                face.texIndices[i]--;
             }
             out_faces.push_back(face);
         }

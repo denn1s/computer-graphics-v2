@@ -23,7 +23,7 @@ Vertex vertexShader(const Vertex& vertex, const Uniforms& uniforms) {
     return Vertex{
         glm::vec3(screenVertex),
         transformedNormal,
-        // vertex.normal, // non transformed normal
+        vertex.tex
     };
 }
 

@@ -12,6 +12,11 @@ void print(const Vertex& v) {
 }
 
 
+// overload for glm::vec2
+void print(const glm::vec2& v) {
+    std::cout << "glm::vec2(" << v.x << ", " << v.y << ")" << std::endl;
+}
+
 // overload for glm::vec3
 void print(const glm::vec3& v) {
     std::cout << "glm::vec3(" << v.x << ", " << v.y << ", " << v.z << ")" << std::endl;

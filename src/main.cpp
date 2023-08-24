@@ -14,6 +14,7 @@
 #include "uniforms.h"
 #include "shaders.h"
 #include "fragment.h"
+#include "texture.h"
 #include "triangle.h"
 #include "camera.h"
 #include "ObjLoader.h"
@@ -50,10 +51,10 @@ void setColor(const Color& color) {
 
 void render(const std::vector<glm::vec3>& VBO, const Uniforms& uniforms) {
     // 1. Vertex Shader
-    std::vector<Vertex> transformedVertices(VBO.size() / 2);
-    tbb::parallel_for(size_t(0), VBO.size() / 2,
+    std::vector<Vertex> transformedVertices(VBO.size() / 3);
+    tbb::parallel_for(size_t(0), VBO.size() / 3,
         [&](size_t i) {
-            Vertex vertex = { VBO[i * 2], VBO[i * 2 + 1] };
+            Vertex vertex = { VBO[i * 3], VBO[i * 3 + 1], VBO[i * 3 + 2] };
             transformedVertices[i] = vertexShader(vertex, uniforms);
         }
     );
@@ -124,10 +125,12 @@ int main(int argc, char* argv[]) {
 
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
+    std::vector<glm::vec3> texCoords;
     std::vector<Face> faces;
     std::vector<glm::vec3> vertexBufferObject; // This will contain both vertices and normals
 
-    loadOBJ("models/model.obj", vertices, normals, faces);
+    loadOBJ("models/model.obj", vertices, normals, texCoords, faces);
+    loadTexture("models/model.png");
 
     for (const auto& face : faces)
     {
@@ -138,10 +141,14 @@ int main(int argc, char* argv[]) {
 
             // Get the normal for the current vertex
             glm::vec3 vertexNormal = normals[face.normalIndices[i]];
+            
+            // Get the texture for the current vertex
+            glm::vec3 vertexTexture = texCoords[face.texIndices[i]];
 
             // Add the vertex position and normal to the vertex array
             vertexBufferObject.push_back(vertexPosition);
             vertexBufferObject.push_back(vertexNormal);
+            vertexBufferObject.push_back(vertexTexture);
         }
     }
 
@@ -204,7 +211,6 @@ int main(int argc, char* argv[]) {
         SDL_RenderClear(renderer);
         clearFramebuffer();
 
-        setColor(Color(255, 255, 0));
         render(vertexBufferObject, uniforms);
 
         renderBuffer(renderer);

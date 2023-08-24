@@ -48,6 +48,9 @@ void renderBuffer(SDL_Renderer* renderer) {
             int framebufferY = SCREEN_HEIGHT - y - 1;  // Reverse the order of rows
             int index = y * (pitch / sizeof(Uint32)) + x;
             const Color& color = framebuffer[framebufferY * SCREEN_WIDTH + x].color;
+            if (color.r != 0) {
+                /* print(color); */
+            }
             texturePixels32[index] = SDL_MapRGBA(mappingFormat, color.r, color.g, color.b, color.a);
         }
     }

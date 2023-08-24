@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include "line.h"
 #include "framebuffer.h"
+#include "color.h"
+#include "texture.h"
 
 glm::vec3 L = glm::vec3(0.0f, 0.0f, 1.0f);
 
@@ -60,12 +62,21 @@ std::vector<Fragment> triangle(const Vertex& a, const Vertex& b, const Vertex& c
       if (intensity < 0)
         continue;
 
+      Color color = Color(255, 255, 255);
+
+      if (currentTexture) {
+        // Compute the interpolated texture coordinates
+        glm::vec2 texCoords = a.tex * w + b.tex * v + c.tex * u;
+        // Fetch the pixel color from the texture
+        color = getPixelFromTexture(texCoords.x, texCoords.y);
+      }
+
       fragments.push_back(
         Fragment{
           static_cast<uint16_t>(P.x),
           static_cast<uint16_t>(P.y),
           z,
-          Color(205, 205, 205),
+          color,
           intensity}
       );
     }

@@ -19,6 +19,7 @@
 #include "triangle.h"
 #include "camera.h"
 #include "ObjLoader.h"
+#include "noise.h"
 
 
 SDL_Window* window = nullptr;
@@ -42,6 +43,8 @@ bool init() {
         std::cerr << "Error: Failed to create SDL renderer: " << SDL_GetError() << std::endl;
         return false;
     }
+
+    setupNoise();
 
     return true;
 }
@@ -130,8 +133,8 @@ int main(int argc, char* argv[]) {
     std::vector<Face> faces;
     std::vector<glm::vec3> vertexBufferObject; // This will contain both vertices and normals
 
-    loadOBJ("models/diablo3.obj", vertices, normals, texCoords, faces);
-    loadTexture("models/diablo3.png");
+    loadOBJ("models/sphere.obj", vertices, normals, texCoords, faces);
+    /* loadTexture("models/diablo3.png"); */
 
     for (const auto& face : faces)
     {
@@ -169,13 +172,13 @@ int main(int argc, char* argv[]) {
 
     // Initialize a Camera object
     Camera camera;
-    camera.cameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+    camera.cameraPosition = glm::vec3(0.0f, 0.0f, 1.5f);
     camera.targetPosition = glm::vec3(0.0f, 0.0f, 0.0f);
     camera.upVector = glm::vec3(0.0f, 1.0f, 0.0f);
 
     // Projection matrix
     float fovInDegrees = 45.0f;
-    float aspectRatio = SCREEN_WIDTH / SCREEN_HEIGHT; // Assuming a screen resolution of 800x600
+    float aspectRatio = static_cast<float>(SCREEN_WIDTH) / static_cast<float>(SCREEN_HEIGHT); // Assuming a screen resolution of 800x600
     float nearClip = 0.1f;
     float farClip = 100.0f;
     uniforms.projection = glm::perspective(glm::radians(fovInDegrees), aspectRatio, nearClip, farClip);
@@ -183,7 +186,7 @@ int main(int argc, char* argv[]) {
     uniforms.viewport = createViewportMatrix(SCREEN_WIDTH, SCREEN_HEIGHT);
     Uint32 frameStart, frameTime;
     std::string title = "FPS: ";
-    int speed = 2;
+    int speed = 10;
 
     bool running = true;
     while (running) {
@@ -212,8 +215,8 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        a += 0.1;
-        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(a), rotationAxis);
+        a += 1;
+        glm::mat4 rotation = glm::rotate(glm::mat4(90.0f), glm::radians(a), rotationAxis);
 
         // Calculate the model matrix
         uniforms.model = translation * rotation * scale;

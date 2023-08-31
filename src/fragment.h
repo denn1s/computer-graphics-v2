@@ -7,6 +7,8 @@ struct Vertex {
   glm::vec3 position;
   glm::vec3 normal;
   glm::vec3 tex;
+  glm::vec3 worldPos;
+  glm::vec3 originalPos;
 };
 
 struct Fragment {
@@ -15,6 +17,8 @@ struct Fragment {
   double z;  // zbuffer
   Color color; // r, g, b values for color
   float intensity;  // light intensity
+  glm::vec3 worldPos;
+  glm::vec3 originalPos;
 };
 
 struct FragColor {

@@ -6,7 +6,7 @@
 #include "color.h"
 #include "texture.h"
 
-glm::vec3 L = glm::vec3(1.0f, 0.0f, 0.0f);
+glm::vec3 L = glm::vec3(0.0f, 0.0f, 1.0f);
 
 std::pair<float, float> barycentricCoordinates(const glm::ivec2& P, const glm::vec3& A, const glm::vec3& B, const glm::vec3& C) {
     glm::vec3 bary = glm::cross(
@@ -56,6 +56,7 @@ std::vector<Fragment> triangle(const Vertex& a, const Vertex& b, const Vertex& c
        glm::vec3 normal = glm::normalize( 
            a.normal * w + b.normal * v + c.normal * u
        ); 
+
       // glm::vec3 normal = a.normal; // assume flatness
       float intensity = glm::dot(normal, L);
       
@@ -71,13 +72,19 @@ std::vector<Fragment> triangle(const Vertex& a, const Vertex& b, const Vertex& c
         color = getPixelFromTexture(texCoords.x, texCoords.y);
       }
 
+      glm::vec3 worldPos = a.worldPos * w + b.worldPos * v + c.worldPos * u;
+      glm::vec3 originalPos = a.originalPos * w + b.originalPos * v + c.originalPos * u;
+
       fragments.push_back(
         Fragment{
           static_cast<uint16_t>(P.x),
           static_cast<uint16_t>(P.y),
           z,
           color,
-          intensity}
+          intensity,
+          worldPos,
+          originalPos
+        }
       );
     }
 }

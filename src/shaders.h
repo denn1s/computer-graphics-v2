@@ -29,6 +29,5 @@ Vertex vertexShader(const Vertex& vertex, const Uniforms& uniforms) {
 
 Fragment fragmentShader(Fragment& fragment) {
     fragment.color = fragment.color * fragment.intensity;
-
     return fragment;
 }

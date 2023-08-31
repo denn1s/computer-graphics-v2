@@ -2,6 +2,7 @@
 #include "color.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <glm/glm.hpp>
 #include <string>
 #include <iostream>
 
@@ -63,3 +64,32 @@ Color getPixelFromTexture(float u, float v) {
     return Color(r, g, b, a);
 }
 
+// Helper function to get normal vector from a texture
+glm::vec3 getNormalFromTexture(float u, float v) {
+    int texWidth = currentTexture->w;
+    int texHeight = currentTexture->h;
+
+    // Convert the normalized texture coordinates into the pixel space
+    int x = static_cast<int>(u * texWidth);
+    int y = static_cast<int>((1.0f - v) * texHeight);
+
+    // Ensure x and y are within the texture's bounds
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x >= texWidth) x = texWidth - 1;
+    if (y >= texHeight) y = texHeight - 1;
+
+    // Fetch the pixel value from the texture
+    Uint32 pixel = ((Uint32*)currentTexture->pixels)[y * currentTexture->pitch / sizeof(Uint32) + x];
+    
+    // Decompose the pixel into its RGBA components
+    Uint8 r, g, b, a;
+    SDL_GetRGBA(pixel, currentTexture->format, &r, &g, &b, &a);
+
+    // Convert the color data to a normal vector
+    float xNormal = (r / 255.0f) * 2.0f - 1.0f;
+    float yNormal = (g / 255.0f) * 2.0f - 1.0f;
+    float zNormal = (b / 255.0f) * 2.0f - 1.0f;
+
+    return glm::vec3(xNormal, yNormal, zNormal);
+}

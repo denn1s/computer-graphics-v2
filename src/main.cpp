@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
 #include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -129,8 +130,8 @@ int main(int argc, char* argv[]) {
     std::vector<Face> faces;
     std::vector<glm::vec3> vertexBufferObject; // This will contain both vertices and normals
 
-    loadOBJ("models/model.obj", vertices, normals, texCoords, faces);
-    loadTexture("models/model.png");
+    loadOBJ("models/diablo3.obj", vertices, normals, texCoords, faces);
+    loadTexture("models/diablo3.png");
 
     for (const auto& face : faces)
     {
@@ -182,6 +183,7 @@ int main(int argc, char* argv[]) {
     uniforms.viewport = createViewportMatrix(SCREEN_WIDTH, SCREEN_HEIGHT);
     Uint32 frameStart, frameTime;
     std::string title = "FPS: ";
+    int speed = 2;
 
     bool running = true;
     while (running) {
@@ -191,6 +193,22 @@ int main(int argc, char* argv[]) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 running = false;
+            }
+            if (event.type == SDL_KEYDOWN) {
+                 switch (event.key.keysym.sym) {
+                    case SDLK_LEFT:
+                        camera.cameraPosition.x += -speed;
+                    break;
+                    case SDLK_RIGHT:
+                        camera.cameraPosition.x += speed;
+                    break;
+                    case SDLK_UP:
+                        camera.cameraPosition.y += -speed;
+                    break;
+                        case SDLK_DOWN:
+                        camera.cameraPosition.y += speed;
+                    break;
+                }
             }
         }
 

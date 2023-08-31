@@ -6,7 +6,7 @@
 #include "color.h"
 #include "texture.h"
 
-glm::vec3 L = glm::vec3(0.0f, 0.0f, 1.0f);
+glm::vec3 L = glm::vec3(1.0f, 0.0f, 0.0f);
 
 std::pair<float, float> barycentricCoordinates(const glm::ivec2& P, const glm::vec3& A, const glm::vec3& B, const glm::vec3& C) {
     glm::vec3 bary = glm::cross(

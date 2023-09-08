@@ -1,10 +1,13 @@
 #pragma once
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>
+#include "FastNoise.h"
 #include "uniforms.h"
 #include "fragment.h"
 #include "noise.h"
 #include "print.h"
+
+static int frame = 0;
 
 Vertex vertexShader(const Vertex& vertex, const Uniforms& uniforms) {
     // Apply transformations to the input vertex using the matrices from the uniforms
@@ -116,33 +119,127 @@ Fragment fragmentShaderGreeN(Fragment& fragment) {
     return fragment;
 }
 
-Fragment fragmentShader(Fragment& fragment) {
-    // Define the colors for the ocean, the ground, and the spots with direct values
-    glm::vec3 spotColorGreen = glm::vec3(0.133f, 0.545f, 0.133f);  // Forest green
-    glm::vec3 spotColorBlue = glm::vec3(0.0f, 0.0f, 1.0f);  // Blue
+Fragment fragmentShaderEarth(Fragment& fragment) {
+    Color color;
 
-    // Sample the Perlin noise map at the fragment's position
-    glm::vec2 uv = glm::vec2(fragment.originalPos.x, fragment.originalPos.z);
-    uv = glm::clamp(uv, 0.0f, 1.0f);  // make sure the uv coordinates are in [0, 1] range
+    glm::vec3 groundColor = glm::vec3(0.44f, 0.51f, 0.33f);
+    glm::vec3 oceanColor = glm::vec3(0.12f, 0.38f, 0.57f);
+    glm::vec3 cloudColor = glm::vec3(1.0f, 1.0f, 1.0f);
 
-    // Set up the noise generator
+    float x = fragment.originalPos.x;
+    float y = fragment.originalPos.y;
+    float z = fragment.originalPos.z;
+    /* glm::vec2 uv = glm::vec2(fragment.originalPos.x, fragment.originalPos.y); */
+    float radius = sqrt(x*x + y*y + z*z);
+
+    /* glm::vec2 uv = glm::vec2( */
+    /*     atan2(x, z), */
+    /*     acos(y/sqrt(x*x + y*y + z*z)) */
+    /* ); */
+
+    glm::vec3 uv = glm::vec3(
+        atan2(x, z),
+        acos(y / radius),
+        radius
+    );
+
+    glm::vec3 uv2 = glm::vec3(
+        atan2(x + 10, z),
+        acos(y / radius),
+        radius
+    );
+
+
     FastNoiseLite noiseGenerator;
     noiseGenerator.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    /* noiseGenerator.SetRotationType3D(FastNoiseLite::RotationType3D_ImproveXYPlanes); */
+    /* noiseGenerator.DomainWarp(uv.x, uv.y, uv.z); */
 
     float ox = 1200.0f;
     float oy = 3000.0f;
-    float z = 1000.0f;
-    // Generate the noise value
-    float noiseValue = noiseGenerator.GetNoise((uv.x + ox) * z, (uv.y + oy) * z);
+    float zoom = 100.0f;
 
-    // Decide the spot color based on the noise value
-    glm::vec3 c = (noiseValue < 0.5f) ? spotColorBlue : spotColorGreen;
+    /* float noiseValue1 = noiseGenerator.GetNoise(uv.x * zoom, uv.y * zoom); */
+    /* float noiseValue2 = noiseGenerator.GetNoise(uv.y * zoom + 1000.0f, uv.x * zoom + 1000.0f); */
+    /* float noiseValue = (noiseValue1 + noiseValue2) * 0.5f; */
 
-    // Interpolate between the ocean color and the ground color based on the water/ground transition
-    // Then, interpolate between this color and the spot color
+    float noiseValue1 = noiseGenerator.GetNoise(uv.x * zoom, uv.y * zoom, uv.z * zoom);
+    float noiseValue2 = noiseGenerator.GetNoise(uv2.x * zoom + ox, uv2.y * zoom, uv2.z * zoom + oy);
+    float noiseValue = (noiseValue1 + noiseValue2) * 0.5f;
 
-    // Convert glm::vec3 color to your Color class
-    fragment.color = Color(c.r, c.g, c.b);
+
+
+    glm::vec3 tmpColor = (noiseValue < 0.2f) ? oceanColor : groundColor;
+
+    float oxc = 5500.0f;
+    float oyc = 6900.0f;
+    float zoomc = 300.0f;
+
+    float noiseValueC = noiseGenerator.GetNoise((uv.x + oxc) * zoomc, (uv.y + oyc) * zoomc);
+    
+    if (noiseValueC > 0.5f) {
+        /* tmpColor = cloudColor; */
+    }
+
+
+    color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
+
+    
+
+    fragment.color = color * fragment.intensity;
 
     return fragment;
 }
+
+Fragment fragmentShader(Fragment& fragment) {
+
+    Color color;
+
+    glm::vec3 brightColor = glm::vec3(1.0f, 0.6f, 0.0f);
+    glm::vec3 darkColor = glm::vec3(0.8f, 0.2f, 0.0f); 
+
+    float x = fragment.originalPos.x;
+    float y = fragment.originalPos.y;
+    float z = fragment.originalPos.z;
+    float radius = sqrt(x*x + y*y + z*z);
+
+    glm::vec3 uv = glm::vec3(
+        atan2(x, z),
+        acos(y/radius),
+        radius
+    );
+
+    FastNoiseLite noiseGenerator;
+
+
+    noiseGenerator.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+    noiseGenerator.SetFrequency(0.02 + (10 - abs((static_cast<int>(frame/10.0f) % (2 * 10)) - 10))/2000.0f);
+
+    float zoom = 1000.0f;
+
+
+    float lat = uv.y;  // Latitude
+    float lon = uv.x;  // Longitude
+
+    // Normalize the direction vector
+    glm::vec3 dir = glm::normalize(glm::vec3(sin(lat) * cos(lon), sin(lat) * sin(lon), cos(lat)));
+
+    float noiseValue1 = noiseGenerator.GetNoise(uv.x * zoom, uv.y * zoom, uv.z * zoom);
+    float noiseValue2 = noiseGenerator.GetNoise(uv.x * zoom + 1000.0f, uv.y * zoom + 1000.0f);
+    float noiseValue = (noiseValue1 + noiseValue2) * 0.5f;
+
+    float edgeFactorY = sin(dir.y);  // Value is 0 at the poles and 1 at the equator
+    float edgeFactorX = sin(dir.x);  // Value is 0 at leftmost and rightmost points, 1 at front and back
+    float edgeFactor = edgeFactorX * edgeFactorY;
+    float alpha = 1.0f - glm::mix(1.0f, 0.0f, edgeFactor);  // Alpha is 1 at the poles and 0 at the equator
+
+    glm::vec3 tmpColor = mix(brightColor, darkColor, noiseValue);
+
+    color = Color(tmpColor.x, tmpColor.y, tmpColor.z, alpha);
+
+    
+    fragment.color = color * fragment.intensity;
+
+    return fragment;
+}
+

@@ -2,3 +2,6 @@ build
 image.bmp
 gmon.out
 analysis.txt
+.cache
+.clang-tidy
+.clangd

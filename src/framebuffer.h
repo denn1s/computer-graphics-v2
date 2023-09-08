@@ -38,6 +38,7 @@ void renderBuffer(SDL_Renderer* renderer) {
     void* texturePixels;
     int pitch;
     SDL_LockTexture(texture, NULL, &texturePixels, &pitch);
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
 
     Uint32 format = SDL_PIXELFORMAT_ARGB8888;
     SDL_PixelFormat* mappingFormat = SDL_AllocFormat(format);
@@ -48,9 +49,6 @@ void renderBuffer(SDL_Renderer* renderer) {
             int framebufferY = SCREEN_HEIGHT - y - 1;  // Reverse the order of rows
             int index = y * (pitch / sizeof(Uint32)) + x;
             const Color& color = framebuffer[framebufferY * SCREEN_WIDTH + x].color;
-            if (color.r != 0) {
-                /* print(color); */
-            }
             texturePixels32[index] = SDL_MapRGBA(mappingFormat, color.r, color.g, color.b, color.a);
         }
     }

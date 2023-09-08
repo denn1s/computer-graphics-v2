@@ -190,6 +190,7 @@ int main(int argc, char* argv[]) {
 
     bool running = true;
     while (running) {
+        frame += 1;
         frameStart = SDL_GetTicks();
 
         SDL_Event event;
